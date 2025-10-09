@@ -1,0 +1,9 @@
+{
+  "custom_stop_words": ["defguard"],
+  "coverage_options": {
+    "treat_no_relevant_lines_as_covered": true,
+    "minimum_coverage": 100,
+    "html_filter_full_covered": true
+  },
+  "skip_files": []
+}
