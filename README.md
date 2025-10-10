@@ -67,7 +67,14 @@ defmodule MyAppWeb.RedirectURIs do
 
   @spec allowed_redirect_uris() :: [URI.t()]
   def allowed_redirect_uris do
-    [endpoint_uri() | unquote(urls |> Enum.map(&URI.new!/1) |> Macro.escape())]
+    [
+      endpoint_uri()
+      | unquote(
+          @allowed_redirect_urls
+          |> Enum.map(&URI.new!/1)
+          |> Macro.escape()
+        )
+    ]
   end
 
   defp endpoint_uri do
