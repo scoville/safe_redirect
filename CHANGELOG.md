@@ -5,6 +5,13 @@ format.
 
 ## Unreleased
 
+## [1.0.1] - 2025-10-10
+
+### Fixed
+
+- Type specification of `SafeRedirect.resolve_url/3` didn't allow `nil` as
+  default value.
+
 ## [1.0.0] - 2025-10-10
 
 Initial release
