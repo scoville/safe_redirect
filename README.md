@@ -19,7 +19,7 @@ end
 
 If a web application allows an external redirect URL to be set without
 proper validation, for example via a `return_to` query parameter, an attacker
-exploit this to redirect users to a phishing or malicious site.
+can exploit this to redirect users to a phishing or malicious site.
 
 This library allows you to configure a list of known hosts and to validate or
 resolve a given redirect URL.
@@ -31,7 +31,7 @@ For more information, refer to https://cheatsheetseries.owasp.org/cheatsheets/Un
 A related but distinct attack vector is Server Side Request Forgery. This
 vulnerability occurs when a server makes requests to URLs provided by a user,
 for example, when fetching Open Graph data or executing Webhooks. If these
-URLs are not validated, an attacker can trick the server into make requests to
+URLs are not validated, an attacker can trick the server into making requests to
 the internal network or to the server itself.
 
 To prevent this type of vulnerability, use [Safeurl](https://hex.pm/packages/safeurl).
@@ -147,6 +147,6 @@ SafeRedirect.safe_redirect(socket, "https://good.example/login")
 - Protocol-relative URIs (starting with `//`) are not allowed.
 - Given absolute URIs are compared against the configured allowed URIs by
   matching the scheme, host, and port.
-- Any path under an allowed base URIs is considered valid.
+- Any path under an allowed base URI is considered valid.
 - Paths, query strings, and fragments are ignored when checking the base URI.
 - Absolute redirect URIs are only valid if the scheme is `https` or `http`.
