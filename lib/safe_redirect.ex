@@ -114,7 +114,7 @@ defmodule SafeRedirect do
       iex> resolve_url(url, "/", allowed_redirect_uris: ["https://good.example"])
       "/"
   """
-  @spec resolve_url(any, String.t() | URI.t(), keyword) :: any
+  @spec resolve_url(any, String.t() | URI.t() | nil, keyword) :: any
   def resolve_url(url, default \\ "/", opts \\ [])
 
   def resolve_url(url, default, opts) when is_binary(url) do
