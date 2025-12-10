@@ -90,7 +90,7 @@ You can configure this function as the default for all `SafeRedirect`
 functions, or you can pass a module/function tuple directly to all functions.
 
 ```elixir
-config SafeRedirect,
+config :safe_redirect,
   # you can also set a list of strings or URI structs here
   allowed_redirect_uris: {MyAppWeb.RedirectURIs, :allowed_redirect_uris}
 ```
