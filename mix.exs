@@ -18,13 +18,6 @@ defmodule SafeRedirect.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       test_coverage: [tool: ExCoveralls],
-      preferred_cli_env: [
-        coveralls: :test,
-        "coveralls.detail": :test,
-        "coveralls.html": :test,
-        "coveralls.json": :test,
-        "coveralls.github": :test
-      ],
       dialyzer: [
         # Configure ignore file. The file uses the short format:
         # mix dialyzer --format short
@@ -34,6 +27,18 @@ defmodule SafeRedirect.MixProject do
         list_unused_filters: true,
         # Set location of the persistent lookup table
         plt_file: {:no_warn, ".plts/dialyzer.plt"}
+      ]
+    ]
+  end
+
+  def cli do
+    [
+      preferred_envs: [
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.html": :test,
+        "coveralls.json": :test,
+        "coveralls.github": :test
       ]
     ]
   end
