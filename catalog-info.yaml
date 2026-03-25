@@ -1,0 +1,26 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+
+metadata:
+  name: safe_redirect
+  description: Elixir library to validate redirect URLs
+
+spec:
+  type: library
+  businessUnit: hr
+  public: false
+  lifecycle: production
+  owner: group:default/poblano
+  github:
+    team: poblano
+  linear:
+    teamIdentifier: POB
+  slack:
+    channels:
+      - 40_poblano
+  slite:
+    channelId: uzBZIPBP3mvsKT
+  technologies:
+    - elixir
+  capabilities:
+    - redirect-url-resolution
