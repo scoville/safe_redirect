@@ -27,7 +27,8 @@ defmodule SafeRedirect.MixProject do
         list_unused_filters: true,
         # Set location of the persistent lookup table
         plt_file: {:no_warn, ".plts/dialyzer.plt"}
-      ]
+      ],
+      hex: [policy: [org: "scoville", name: "baseline"]]
     ]
   end
 
