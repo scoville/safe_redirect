@@ -58,11 +58,11 @@ defmodule SafeRedirect.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:credo, "== 1.7.12", only: [:dev, :test], runtime: false},
-      {:dialyxir, "== 1.4.6", only: [:dev], runtime: false},
-      {:ex_doc, "== 0.38.4", only: :dev, runtime: false},
-      {:excoveralls, "== 0.18.5", only: :test},
-      {:makeup_diff, "== 0.1.1", only: :dev, runtime: false},
+      {:credo, "~> 1.7.19", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4.6", only: [:dev], runtime: false},
+      {:ex_doc, "~> 0.40", only: :dev, runtime: false},
+      {:excoveralls, "~> 0.18.5", only: :test},
+      {:makeup_diff, "~> 0.1.1", only: :dev, runtime: false},
       {:phoenix_live_view, ">= 1.0.0", optional: true},
       {:plug, ">= 1.0.0", optional: true}
     ]
