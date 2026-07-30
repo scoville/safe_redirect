@@ -33,7 +33,7 @@ defmodule SafeRedirect do
     end
   end
 
-  def valid_url?(%URI{scheme: nil, path: "/" <> _ = path}, _) do
+  def valid_url?(%URI{scheme: nil, host: nil, path: "/" <> _ = path}, _) do
     valid_path?(path)
   end
 

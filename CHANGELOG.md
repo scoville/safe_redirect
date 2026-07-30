@@ -5,6 +5,12 @@ format.
 
 ## Unreleased
 
+## [1.0.2] - 2026-07-30
+
+### Security
+
+- Do not accept protocol-relative URLs with a path.
+
 ## [1.0.1] - 2025-10-10
 
 ### Fixed

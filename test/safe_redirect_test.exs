@@ -34,6 +34,13 @@ defmodule SafeRedirectTest do
 
     test "does not accept protocol-relative URLs" do
       refute SafeRedirect.valid_url?("//evil.url", [])
+      refute SafeRedirect.valid_url?("//evil.example", [])
+      refute SafeRedirect.valid_url?("//evil.example/", [])
+      refute SafeRedirect.valid_url?("//evil.example/foo", [])
+
+      refute SafeRedirect.valid_url?("//evil.example/foo",
+               allowed_redirect_uris: ["https://good.example"]
+             )
     end
 
     test "accepts known absolute URL via list in options" do
