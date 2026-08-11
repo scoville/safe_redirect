@@ -1,0 +1,10 @@
+version: 2
+
+updates:
+  - package-ecosystem: "mix"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      timezone: "Asia/Tokyo"
+    cooldown:
+      default-days: 7
