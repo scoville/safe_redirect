@@ -1,18 +1,31 @@
 name: CI
 
 env:
-  ELIXIR_VERSION: "1.20.2"
-  OTP_VERSION: "28"
+  ELIXIR_VERSION: "1.20.3"
+  OTP_VERSION: "29"
 
 on:
   push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test-elixir:
     name: Elixir tests
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Set up Elixir
         id: beam
         uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
@@ -52,7 +65,7 @@ jobs:
       - name: Build documentation
         run: mix docs --warnings-as-errors
       - name: Run Tests
-        run: mix coveralls.html
+        run: mix coveralls.html --warnings-as-errors
       - name: Create PLTs
         if: steps.plt_cache.outputs.cache-hit != 'true'
         run: mix dialyzer --plt
