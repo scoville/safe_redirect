@@ -260,6 +260,31 @@ defmodule SafeRedirectTest do
       end
     end
 
+    test "sets the response status, content type, and body", %{
+      conn: conn,
+      opts: opts
+    } do
+      conn = SafeRedirect.redirect(conn, "/kittens", "/", opts)
+
+      assert conn.status == 302
+      assert Plug.Conn.get_resp_header(conn, "location") == ["/kittens"]
+
+      assert Plug.Conn.get_resp_header(conn, "content-type") == [
+               "text/html; charset=utf-8"
+             ]
+
+      assert conn.resp_body =~ ~s(<a href="/kittens">)
+    end
+
+    test "escapes the URL in the response body", %{conn: conn} do
+      opts = [allowed_redirect_uris: ["https://good.example"]]
+      url = "https://good.example/?a=1&b=2"
+      conn = SafeRedirect.redirect(conn, url, "/", opts)
+
+      assert conn.resp_body =~ "&amp;"
+      refute conn.resp_body =~ "&b=2"
+    end
+
     test "raises if the default URL is protocol-relative", %{
       conn: conn,
       opts: opts

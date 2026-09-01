@@ -7,6 +7,9 @@ format. This project adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Fixed
 
+- `SafeRedirect.redirect/4` raised `UndefinedFunctionError` in applications that
+  depend on Plug but not on Phoenix. It now uses `Plug.Conn` directly instead of
+  `Phoenix.Controller`.
 - Refuse a percent-encoded default value that resolves to a protocol-relative
   URL, such as `/%2F%2Fevil.example` or `/%5Cevil.example`.
 - Accept `URI` structs for the URL and the default value in

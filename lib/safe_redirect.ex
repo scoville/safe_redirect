@@ -168,22 +168,24 @@ defmodule SafeRedirect do
     end
 
     def redirect(conn_or_socket, url, default \\ "/", opts \\ []) do
-      resolved_opts = url |> resolve_url(default, opts) |> redirect_opts()
-      do_redirect(conn_or_socket, resolved_opts)
+      {type, redirect_url} =
+        url |> resolve_url(default, opts) |> redirect_target()
+
+      do_redirect(conn_or_socket, type, redirect_url)
     end
 
-    defp redirect_opts(%URI{} = uri) do
-      uri |> URI.to_string() |> redirect_opts()
+    defp redirect_target(%URI{} = uri) do
+      uri |> URI.to_string() |> redirect_target()
     end
 
-    defp redirect_opts("https://" <> _ = url), do: [external: url]
-    defp redirect_opts("http://" <> _ = url), do: [external: url]
+    defp redirect_target("https://" <> _ = url), do: {:external, url}
+    defp redirect_target("http://" <> _ = url), do: {:external, url}
 
-    defp redirect_opts("/" <> _ = url) do
-      if relative_path?(url), do: [to: url], else: raise_unredirectable(url)
+    defp redirect_target("/" <> _ = url) do
+      if relative_path?(url), do: {:to, url}, else: raise_unredirectable(url)
     end
 
-    defp redirect_opts(resolved), do: raise_unredirectable(resolved)
+    defp redirect_target(resolved), do: raise_unredirectable(resolved)
 
     defp relative_path?(url) do
       normalized =
@@ -213,15 +215,20 @@ defmodule SafeRedirect do
       """
     end
 
-    defp do_redirect(%Plug.Conn{} = conn, opts) do
+    defp do_redirect(%Plug.Conn{} = conn, _type, url) do
+      body =
+        "<html><body>You are being <a href=\"#{Plug.HTML.html_escape(url)}\">redirected</a>.</body></html>"
+
       conn
-      |> Phoenix.Controller.redirect(opts)
+      |> Plug.Conn.put_resp_header("location", url)
+      |> Plug.Conn.put_resp_content_type("text/html")
+      |> Plug.Conn.send_resp(conn.status || 302, body)
       |> Plug.Conn.halt()
     end
 
     if Code.ensure_loaded?(Phoenix.LiveView) do
-      defp do_redirect(%Phoenix.LiveView.Socket{} = socket, opts) do
-        Phoenix.LiveView.redirect(socket, opts)
+      defp do_redirect(%Phoenix.LiveView.Socket{} = socket, type, url) do
+        Phoenix.LiveView.redirect(socket, [{type, url}])
       end
     end
   end
