@@ -167,6 +167,10 @@ defmodule SafeRedirect do
       do_redirect(conn_or_socket, resolved_opts)
     end
 
+    defp redirect_opts(%URI{} = uri) do
+      uri |> URI.to_string() |> redirect_opts()
+    end
+
     defp redirect_opts("https://" <> _ = url), do: [external: url]
     defp redirect_opts("http://" <> _ = url), do: [external: url]
     defp redirect_opts("/" <> _ = url), do: [to: url]

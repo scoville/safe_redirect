@@ -234,6 +234,26 @@ defmodule SafeRedirectTest do
       assert conn.halted
     end
 
+    test "redirects to URL given as URI", %{conn: conn, opts: opts} do
+      url = URI.new!("https://good.example/kittens")
+      conn = SafeRedirect.redirect(conn, url, "/", opts)
+      assert redirected_to(conn) == "https://good.example/kittens"
+      assert conn.halted
+    end
+
+    test "redirects to relative URL given as URI", %{conn: conn, opts: opts} do
+      conn = SafeRedirect.redirect(conn, URI.new!("/kittens"), "/", opts)
+      assert redirected_to(conn) == "/kittens"
+      assert conn.halted
+    end
+
+    test "redirects to default URL given as URI", %{conn: conn, opts: opts} do
+      url = "https://evil.example"
+      conn = SafeRedirect.redirect(conn, url, URI.new!("/path"), opts)
+      assert redirected_to(conn) == "/path"
+      assert conn.halted
+    end
+
     test "raises if default URL is nil", %{conn: conn, opts: opts} do
       assert_raise ArgumentError, ~r/Resolved value:\s+nil/, fn ->
         SafeRedirect.redirect(conn, "https://evil.example", nil, opts)
