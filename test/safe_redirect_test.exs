@@ -32,6 +32,14 @@ defmodule SafeRedirectTest do
       refute SafeRedirect.valid_url?("/some/%2E%2E/path", [])
     end
 
+    test "does not accept paths that resolve to a protocol-relative URL" do
+      refute SafeRedirect.valid_url?("/%2F%2Fevil.example", [])
+      refute SafeRedirect.valid_url?("/%2f%2fevil.example", [])
+      refute SafeRedirect.valid_url?("/%5C%5Cevil.example", [])
+      refute SafeRedirect.valid_url?("/%5Cevil.example", [])
+      refute SafeRedirect.valid_url?("/%2F%5Cevil.example", [])
+    end
+
     test "accepts percent-encoded paths" do
       assert SafeRedirect.valid_url?("/some%20path", [])
       assert SafeRedirect.valid_url?("/caf%C3%A9", [])
@@ -303,6 +311,16 @@ defmodule SafeRedirectTest do
 
       assert conn.resp_body =~ "&amp;"
       refute conn.resp_body =~ "&b=2"
+    end
+
+    test "falls back to the default if the URL is protocol-relative", %{
+      conn: conn,
+      opts: opts
+    } do
+      for url <- ["/%2F%2Fevil.example", "/%5Cevil.example"] do
+        conn = SafeRedirect.redirect(conn, url, "/fallback", opts)
+        assert redirected_to(conn) == "/fallback"
+      end
     end
 
     test "raises if the default URL is protocol-relative", %{

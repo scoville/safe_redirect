@@ -93,10 +93,19 @@ defmodule SafeRedirect do
     decoded = URI.decode(path)
 
     not String.contains?(decoded, @control_chars) and
+      not protocol_relative?(path) and
       Path.expand(decoded, "/") == decoded
   end
 
   defp valid_path?(nil), do: true
+
+  defp protocol_relative?(path) do
+    path
+    |> URI.decode()
+    |> String.replace(@control_chars, "")
+    |> String.replace("\\", "/")
+    |> String.starts_with?("//")
+  end
 
   @doc """
   Returns the given URL if it is a valid redirect URL or the default value
@@ -179,20 +188,14 @@ defmodule SafeRedirect do
     defp redirect_target("http://" <> _ = url), do: {:external, url}
 
     defp redirect_target("/" <> _ = url) do
-      if relative_path?(url), do: {:to, url}, else: raise_unredirectable(url)
+      if protocol_relative?(url) do
+        raise_unredirectable(url)
+      else
+        {:to, url}
+      end
     end
 
     defp redirect_target(resolved), do: raise_unredirectable(resolved)
-
-    defp relative_path?(url) do
-      normalized =
-        url
-        |> URI.decode()
-        |> String.replace(@control_chars, "")
-        |> String.replace("\\", "/")
-
-      not String.starts_with?(normalized, "//")
-    end
 
     @spec raise_unredirectable(term()) :: no_return()
     defp raise_unredirectable(resolved) do
