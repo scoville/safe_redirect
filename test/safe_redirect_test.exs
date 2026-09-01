@@ -32,6 +32,11 @@ defmodule SafeRedirectTest do
       refute SafeRedirect.valid_url?("/some/%2E%2E/path", [])
     end
 
+    test "accepts paths that are not in normal form" do
+      assert SafeRedirect.valid_url?("/some/path/", [])
+      assert SafeRedirect.valid_url?("/some//path", [])
+    end
+
     test "does not accept paths that resolve to a protocol-relative URL" do
       refute SafeRedirect.valid_url?("/%2F%2Fevil.example", [])
       refute SafeRedirect.valid_url?("/%2f%2fevil.example", [])
@@ -58,6 +63,25 @@ defmodule SafeRedirectTest do
       opts = [allowed_redirect_uris: ["https://good.example"]]
 
       assert SafeRedirect.valid_url?("https://good.example/caf%C3%A9", opts)
+      assert SafeRedirect.valid_url?("https://good.example/some/path/", opts)
+    end
+
+    test "does not accept a scheme without a host" do
+      refute SafeRedirect.valid_url?("mailto:a@b",
+               allowed_redirect_uris: ["mailto:x@y"]
+             )
+
+      refute SafeRedirect.valid_url?("javascript:alert(1)",
+               allowed_redirect_uris: ["javascript:foo"]
+             )
+
+      refute SafeRedirect.valid_url?("data:text/html,x",
+               allowed_redirect_uris: ["data:text/plain,y"]
+             )
+
+      refute SafeRedirect.valid_url?("https:///x",
+               allowed_redirect_uris: ["https://good.example"]
+             )
     end
 
     test "does not accept protocol-relative URLs" do

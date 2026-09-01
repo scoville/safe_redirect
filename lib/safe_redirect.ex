@@ -47,6 +47,10 @@ defmodule SafeRedirect do
     false
   end
 
+  # A scheme with no host is not a redirect target: mailto:, javascript: and
+  # data: parse as a scheme plus a path.
+  def valid_url?(%URI{host: host}, _) when host in [nil, ""], do: false
+
   def valid_url?(%URI{path: path} = uri, opts) do
     valid_path?(path) &&
       opts
@@ -94,7 +98,7 @@ defmodule SafeRedirect do
 
     not String.contains?(decoded, @control_chars) and
       not protocol_relative?(path) and
-      Path.expand(decoded, "/") == decoded
+      decoded |> Path.split() |> Enum.all?(&(&1 not in [".", ".."]))
   end
 
   defp valid_path?(nil), do: true
