@@ -7,6 +7,9 @@ format. This project adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Fixed
 
+- Accept percent-encoded paths. `/caf%C3%A9` and `/some%20path` were previously
+  rejected, so a redirect target containing a space or a non-ASCII character
+  could not be expressed.
 - `SafeRedirect.redirect/4` raised `UndefinedFunctionError` in applications that
   depend on Plug but not on Phoenix. It now uses `Plug.Conn` directly instead of
   `Phoenix.Controller`.

@@ -32,6 +32,26 @@ defmodule SafeRedirectTest do
       refute SafeRedirect.valid_url?("/some/%2E%2E/path", [])
     end
 
+    test "accepts percent-encoded paths" do
+      assert SafeRedirect.valid_url?("/some%20path", [])
+      assert SafeRedirect.valid_url?("/caf%C3%A9", [])
+      assert SafeRedirect.valid_url?("/50%25", [])
+      assert SafeRedirect.valid_url?("/some%2Fpath", [])
+    end
+
+    test "does not accept paths containing control characters" do
+      refute SafeRedirect.valid_url?("/%09/evil.example", [])
+      refute SafeRedirect.valid_url?("/%0A/evil.example", [])
+      refute SafeRedirect.valid_url?("/%0D/evil.example", [])
+      refute SafeRedirect.valid_url?("/%00", [])
+    end
+
+    test "accepts percent-encoded paths on an allowed host" do
+      opts = [allowed_redirect_uris: ["https://good.example"]]
+
+      assert SafeRedirect.valid_url?("https://good.example/caf%C3%A9", opts)
+    end
+
     test "does not accept protocol-relative URLs" do
       refute SafeRedirect.valid_url?("//evil.url", [])
       refute SafeRedirect.valid_url?("//evil.example", [])

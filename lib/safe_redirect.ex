@@ -3,6 +3,11 @@ defmodule SafeRedirect do
   Documentation for `SafeRedirect`.
   """
 
+  # A browser strips tabs, newlines and carriage returns from a URL before
+  # parsing it, which can turn a path into a protocol-relative URL pointing at
+  # another host. No control character belongs in a redirect target.
+  @control_chars Enum.map(0..0x1F, &<<&1>>) ++ ["\x7F"]
+
   @doc """
   Takes a URL as a string and determines whether it points to an allowed
   host.
@@ -85,13 +90,10 @@ defmodule SafeRedirect do
   end
 
   defp valid_path?(path) when is_binary(path) do
-    # ensure there are not dot segments
-    expanded_path =
-      path
-      |> URI.decode()
-      |> Path.expand("/")
+    decoded = URI.decode(path)
 
-    expanded_path == path
+    not String.contains?(decoded, @control_chars) and
+      Path.expand(decoded, "/") == decoded
   end
 
   defp valid_path?(nil), do: true
@@ -128,11 +130,6 @@ defmodule SafeRedirect do
   def resolve_url(_, default, _), do: default
 
   if Code.ensure_loaded?(Plug.Conn) do
-    # A browser strips tabs, newlines and carriage returns from a URL before
-    # parsing it, which can turn a path into a protocol-relative URL pointing
-    # at another host. No control character belongs in a redirect target.
-    @control_chars Enum.map(0..0x1F, &<<&1>>) ++ ["\x7F"]
-
     @doc """
     Resolves the given URL and performs an internal or external redirect.
 
