@@ -5,6 +5,25 @@ format. This project adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Fixed
+
+- Accept percent-encoded paths. `/caf%C3%A9` and `/some%20path` were previously
+  rejected, so a redirect target containing a space or a non-ASCII character
+  could not be expressed.
+- Accept paths with a trailing slash (`/some/path/`) or repeated slashes
+  (`/some//path`), which were previously rejected.
+- `SafeRedirect.valid_url?/2` raised `FunctionClauseError` for `nil`. It now
+  returns `false`, matching `SafeRedirect.resolve_url/3`.
+- `SafeRedirect.redirect/4` raised `UndefinedFunctionError` in applications that
+  depend on Plug but not on Phoenix. It now uses `Plug.Conn` directly instead of
+  `Phoenix.Controller`.
+- Refuse a percent-encoded default value that resolves to a protocol-relative
+  URL, such as `/%2F%2Fevil.example` or `/%5Cevil.example`.
+- Accept `URI` structs for the URL and the default value in
+  `SafeRedirect.redirect/4`.
+- Raise `ArgumentError` instead of `CaseClauseError` if the resolved URL cannot
+  be redirected to.
+
 ## [1.0.2] - 2026-07-30
 
 ### Security

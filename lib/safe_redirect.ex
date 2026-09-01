@@ -3,6 +3,11 @@ defmodule SafeRedirect do
   Documentation for `SafeRedirect`.
   """
 
+  # A browser strips tabs, newlines and carriage returns from a URL before
+  # parsing it, which can turn a path into a protocol-relative URL pointing at
+  # another host. No control character belongs in a redirect target.
+  @control_chars Enum.map(0..0x1F, &<<&1>>) ++ ["\x7F"]
+
   @doc """
   Takes a URL as a string and determines whether it points to an allowed
   host.
@@ -23,8 +28,10 @@ defmodule SafeRedirect do
       iex> valid_url?(url, allowed_redirect_uris: ["https://good.example"])
       false
   """
-  @spec valid_url?(String.t() | URI.t(), keyword) :: boolean
+  @spec valid_url?(String.t() | URI.t() | nil, keyword) :: boolean
   def valid_url?(url, opts \\ [])
+
+  def valid_url?(nil, _), do: false
 
   def valid_url?(url, opts) when is_binary(url) do
     case URI.new(url) do
@@ -41,6 +48,10 @@ defmodule SafeRedirect do
     # weird path
     false
   end
+
+  # A scheme with no host is not a redirect target: mailto:, javascript: and
+  # data: parse as a scheme plus a path.
+  def valid_url?(%URI{host: host}, _) when host in [nil, ""], do: false
 
   def valid_url?(%URI{path: path} = uri, opts) do
     valid_path?(path) &&
@@ -85,16 +96,22 @@ defmodule SafeRedirect do
   end
 
   defp valid_path?(path) when is_binary(path) do
-    # ensure there are not dot segments
-    expanded_path =
-      path
-      |> URI.decode()
-      |> Path.expand("/")
+    decoded = URI.decode(path)
 
-    expanded_path == path
+    not String.contains?(decoded, @control_chars) and
+      not protocol_relative?(path) and
+      decoded |> Path.split() |> Enum.all?(&(&1 not in [".", ".."]))
   end
 
   defp valid_path?(nil), do: true
+
+  defp protocol_relative?(path) do
+    path
+    |> URI.decode()
+    |> String.replace(@control_chars, "")
+    |> String.replace("\\", "/")
+    |> String.starts_with?("//")
+  end
 
   @doc """
   Returns the given URL if it is a valid redirect URL or the default value
@@ -131,6 +148,10 @@ defmodule SafeRedirect do
     @doc """
     Resolves the given URL and performs an internal or external redirect.
 
+    Raises `ArgumentError` if the resolved URL is neither a relative path nor
+    an `http` or `https` URL, for example if the default value is `nil` or if
+    an allowed URI uses a different scheme.
+
     ## Examples
 
     Using configuration via application environment:
@@ -159,22 +180,61 @@ defmodule SafeRedirect do
     end
 
     def redirect(conn_or_socket, url, default \\ "/", opts \\ []) do
-      case resolve_url(url, default, opts) do
-        "https://" <> _ = url -> do_redirect(conn_or_socket, external: url)
-        "http://" <> _ = url -> do_redirect(conn_or_socket, external: url)
-        "/" <> _ = url -> do_redirect(conn_or_socket, to: url)
+      {type, redirect_url} =
+        url |> resolve_url(default, opts) |> redirect_target()
+
+      do_redirect(conn_or_socket, type, redirect_url)
+    end
+
+    defp redirect_target(%URI{} = uri) do
+      uri |> URI.to_string() |> redirect_target()
+    end
+
+    defp redirect_target("https://" <> _ = url), do: {:external, url}
+    defp redirect_target("http://" <> _ = url), do: {:external, url}
+
+    defp redirect_target("/" <> _ = url) do
+      if protocol_relative?(url) do
+        raise_unredirectable(url)
+      else
+        {:to, url}
       end
     end
 
-    defp do_redirect(%Plug.Conn{} = conn, opts) do
+    defp redirect_target(resolved), do: raise_unredirectable(resolved)
+
+    @spec raise_unredirectable(term()) :: no_return()
+    defp raise_unredirectable(resolved) do
+      raise ArgumentError, """
+      cannot redirect to the resolved URL
+
+      SafeRedirect.redirect/4 can only redirect to a relative path starting
+      with a single "/" or to an absolute http or https URL. A
+      protocol-relative URL points to another host and is refused.
+
+      Resolved value:
+
+          #{inspect(resolved)}
+
+      The resolved value is the given URL if it is allowed, or the default
+      value if it is not.
+      """
+    end
+
+    defp do_redirect(%Plug.Conn{} = conn, _type, url) do
+      body =
+        "<html><body>You are being <a href=\"#{Plug.HTML.html_escape(url)}\">redirected</a>.</body></html>"
+
       conn
-      |> Phoenix.Controller.redirect(opts)
+      |> Plug.Conn.put_resp_header("location", url)
+      |> Plug.Conn.put_resp_content_type("text/html")
+      |> Plug.Conn.send_resp(conn.status || 302, body)
       |> Plug.Conn.halt()
     end
 
     if Code.ensure_loaded?(Phoenix.LiveView) do
-      defp do_redirect(%Phoenix.LiveView.Socket{} = socket, opts) do
-        Phoenix.LiveView.redirect(socket, opts)
+      defp do_redirect(%Phoenix.LiveView.Socket{} = socket, type, url) do
+        Phoenix.LiveView.redirect(socket, [{type, url}])
       end
     end
   end

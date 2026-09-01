@@ -32,6 +32,71 @@ defmodule SafeRedirectTest do
       refute SafeRedirect.valid_url?("/some/%2E%2E/path", [])
     end
 
+    test "accepts paths that are not in normal form" do
+      assert SafeRedirect.valid_url?("/some/path/", [])
+      assert SafeRedirect.valid_url?("/some//path", [])
+    end
+
+    test "does not accept paths that resolve to a protocol-relative URL" do
+      refute SafeRedirect.valid_url?("/%2F%2Fevil.example", [])
+      refute SafeRedirect.valid_url?("/%2f%2fevil.example", [])
+      refute SafeRedirect.valid_url?("/%5C%5Cevil.example", [])
+      refute SafeRedirect.valid_url?("/%5Cevil.example", [])
+      refute SafeRedirect.valid_url?("/%2F%5Cevil.example", [])
+    end
+
+    test "accepts percent-encoded paths" do
+      assert SafeRedirect.valid_url?("/some%20path", [])
+      assert SafeRedirect.valid_url?("/caf%C3%A9", [])
+      assert SafeRedirect.valid_url?("/50%25", [])
+      assert SafeRedirect.valid_url?("/some%2Fpath", [])
+    end
+
+    test "does not accept paths containing control characters" do
+      refute SafeRedirect.valid_url?("/%09/evil.example", [])
+      refute SafeRedirect.valid_url?("/%0A/evil.example", [])
+      refute SafeRedirect.valid_url?("/%0D/evil.example", [])
+      refute SafeRedirect.valid_url?("/%00", [])
+    end
+
+    test "accepts percent-encoded paths on an allowed host" do
+      opts = [allowed_redirect_uris: ["https://good.example"]]
+
+      assert SafeRedirect.valid_url?("https://good.example/caf%C3%A9", opts)
+      assert SafeRedirect.valid_url?("https://good.example/some/path/", opts)
+    end
+
+    test "does not accept nil" do
+      refute SafeRedirect.valid_url?(nil)
+      refute SafeRedirect.valid_url?(nil, [])
+    end
+
+    test "raises for values that are not a URL" do
+      for value <- [42, :atom, %{}] do
+        assert_raise FunctionClauseError, fn ->
+          SafeRedirect.valid_url?(value, [])
+        end
+      end
+    end
+
+    test "does not accept a scheme without a host" do
+      refute SafeRedirect.valid_url?("mailto:a@b",
+               allowed_redirect_uris: ["mailto:x@y"]
+             )
+
+      refute SafeRedirect.valid_url?("javascript:alert(1)",
+               allowed_redirect_uris: ["javascript:foo"]
+             )
+
+      refute SafeRedirect.valid_url?("data:text/html,x",
+               allowed_redirect_uris: ["data:text/plain,y"]
+             )
+
+      refute SafeRedirect.valid_url?("https:///x",
+               allowed_redirect_uris: ["https://good.example"]
+             )
+    end
+
     test "does not accept protocol-relative URLs" do
       refute SafeRedirect.valid_url?("//evil.url", [])
       refute SafeRedirect.valid_url?("//evil.example", [])
@@ -232,6 +297,101 @@ defmodule SafeRedirectTest do
       conn = SafeRedirect.redirect(conn, url, "/", opts)
       assert redirected_to(conn) == "/"
       assert conn.halted
+    end
+
+    test "redirects to URL given as URI", %{conn: conn, opts: opts} do
+      url = URI.new!("https://good.example/kittens")
+      conn = SafeRedirect.redirect(conn, url, "/", opts)
+      assert redirected_to(conn) == "https://good.example/kittens"
+      assert conn.halted
+    end
+
+    test "redirects to relative URL given as URI", %{conn: conn, opts: opts} do
+      conn = SafeRedirect.redirect(conn, URI.new!("/kittens"), "/", opts)
+      assert redirected_to(conn) == "/kittens"
+      assert conn.halted
+    end
+
+    test "redirects to default URL given as URI", %{conn: conn, opts: opts} do
+      url = "https://evil.example"
+      conn = SafeRedirect.redirect(conn, url, URI.new!("/path"), opts)
+      assert redirected_to(conn) == "/path"
+      assert conn.halted
+    end
+
+    test "raises if default URL is nil", %{conn: conn, opts: opts} do
+      assert_raise ArgumentError, ~r/Resolved value:\s+nil/, fn ->
+        SafeRedirect.redirect(conn, "https://evil.example", nil, opts)
+      end
+    end
+
+    test "sets the response status, content type, and body", %{
+      conn: conn,
+      opts: opts
+    } do
+      conn = SafeRedirect.redirect(conn, "/kittens", "/", opts)
+
+      assert conn.status == 302
+      assert Plug.Conn.get_resp_header(conn, "location") == ["/kittens"]
+
+      assert Plug.Conn.get_resp_header(conn, "content-type") == [
+               "text/html; charset=utf-8"
+             ]
+
+      assert conn.resp_body =~ ~s(<a href="/kittens">)
+    end
+
+    test "escapes the URL in the response body", %{conn: conn} do
+      opts = [allowed_redirect_uris: ["https://good.example"]]
+      url = "https://good.example/?a=1&b=2"
+      conn = SafeRedirect.redirect(conn, url, "/", opts)
+
+      assert conn.resp_body =~ "&amp;"
+      refute conn.resp_body =~ "&b=2"
+    end
+
+    test "falls back to the default if the URL is protocol-relative", %{
+      conn: conn,
+      opts: opts
+    } do
+      for url <- ["/%2F%2Fevil.example", "/%5Cevil.example"] do
+        conn = SafeRedirect.redirect(conn, url, "/fallback", opts)
+        assert redirected_to(conn) == "/fallback"
+      end
+    end
+
+    test "raises if the default URL is protocol-relative", %{
+      conn: conn,
+      opts: opts
+    } do
+      defaults = [
+        "//evil.example",
+        "/\\evil.example",
+        "/\t/evil.example",
+        "/%09/evil.example",
+        "/%2F%2Fevil.example",
+        "/%5Cevil.example",
+        "/%0A/evil.example"
+      ]
+
+      for default <- defaults do
+        assert_raise ArgumentError, ~r/cannot redirect/, fn ->
+          SafeRedirect.redirect(conn, "https://evil.example", default, opts)
+        end
+      end
+    end
+
+    test "raises if resolved URL has an unsupported scheme", %{conn: conn} do
+      opts = [allowed_redirect_uris: ["myapp://good.example"]]
+
+      assert_raise ArgumentError, ~r/myapp:\/\/good.example\/kittens/, fn ->
+        SafeRedirect.redirect(
+          conn,
+          "myapp://good.example/kittens",
+          "/",
+          opts
+        )
+      end
     end
   end
 
