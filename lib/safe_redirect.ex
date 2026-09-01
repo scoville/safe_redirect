@@ -128,6 +128,11 @@ defmodule SafeRedirect do
   def resolve_url(_, default, _), do: default
 
   if Code.ensure_loaded?(Plug.Conn) do
+    # A browser strips tabs, newlines and carriage returns from a URL before
+    # parsing it, which can turn a path into a protocol-relative URL pointing
+    # at another host. No control character belongs in a redirect target.
+    @control_chars Enum.map(0..0x1F, &<<&1>>) ++ ["\x7F"]
+
     @doc """
     Resolves the given URL and performs an internal or external redirect.
 
@@ -173,14 +178,31 @@ defmodule SafeRedirect do
 
     defp redirect_opts("https://" <> _ = url), do: [external: url]
     defp redirect_opts("http://" <> _ = url), do: [external: url]
-    defp redirect_opts("/" <> _ = url), do: [to: url]
 
-    defp redirect_opts(resolved) do
+    defp redirect_opts("/" <> _ = url) do
+      if relative_path?(url), do: [to: url], else: raise_unredirectable(url)
+    end
+
+    defp redirect_opts(resolved), do: raise_unredirectable(resolved)
+
+    defp relative_path?(url) do
+      normalized =
+        url
+        |> URI.decode()
+        |> String.replace(@control_chars, "")
+        |> String.replace("\\", "/")
+
+      not String.starts_with?(normalized, "//")
+    end
+
+    @spec raise_unredirectable(term()) :: no_return()
+    defp raise_unredirectable(resolved) do
       raise ArgumentError, """
       cannot redirect to the resolved URL
 
       SafeRedirect.redirect/4 can only redirect to a relative path starting
-      with "/" or to an absolute http or https URL.
+      with a single "/" or to an absolute http or https URL. A
+      protocol-relative URL points to another host and is refused.
 
       Resolved value:
 

@@ -7,6 +7,8 @@ format. This project adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Fixed
 
+- Refuse a percent-encoded default value that resolves to a protocol-relative
+  URL, such as `/%2F%2Fevil.example` or `/%5Cevil.example`.
 - Accept `URI` structs for the URL and the default value in
   `SafeRedirect.redirect/4`.
 - Raise `ArgumentError` instead of `CaseClauseError` if the resolved URL cannot

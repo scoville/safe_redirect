@@ -260,6 +260,27 @@ defmodule SafeRedirectTest do
       end
     end
 
+    test "raises if the default URL is protocol-relative", %{
+      conn: conn,
+      opts: opts
+    } do
+      defaults = [
+        "//evil.example",
+        "/\\evil.example",
+        "/\t/evil.example",
+        "/%09/evil.example",
+        "/%2F%2Fevil.example",
+        "/%5Cevil.example",
+        "/%0A/evil.example"
+      ]
+
+      for default <- defaults do
+        assert_raise ArgumentError, ~r/cannot redirect/, fn ->
+          SafeRedirect.redirect(conn, "https://evil.example", default, opts)
+        end
+      end
+    end
+
     test "raises if resolved URL has an unsupported scheme", %{conn: conn} do
       opts = [allowed_redirect_uris: ["myapp://good.example"]]
 
