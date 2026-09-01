@@ -66,6 +66,19 @@ defmodule SafeRedirectTest do
       assert SafeRedirect.valid_url?("https://good.example/some/path/", opts)
     end
 
+    test "does not accept nil" do
+      refute SafeRedirect.valid_url?(nil)
+      refute SafeRedirect.valid_url?(nil, [])
+    end
+
+    test "raises for values that are not a URL" do
+      for value <- [42, :atom, %{}] do
+        assert_raise FunctionClauseError, fn ->
+          SafeRedirect.valid_url?(value, [])
+        end
+      end
+    end
+
     test "does not accept a scheme without a host" do
       refute SafeRedirect.valid_url?("mailto:a@b",
                allowed_redirect_uris: ["mailto:x@y"]

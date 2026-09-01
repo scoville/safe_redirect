@@ -28,8 +28,10 @@ defmodule SafeRedirect do
       iex> valid_url?(url, allowed_redirect_uris: ["https://good.example"])
       false
   """
-  @spec valid_url?(String.t() | URI.t(), keyword) :: boolean
+  @spec valid_url?(String.t() | URI.t() | nil, keyword) :: boolean
   def valid_url?(url, opts \\ [])
+
+  def valid_url?(nil, _), do: false
 
   def valid_url?(url, opts) when is_binary(url) do
     case URI.new(url) do
