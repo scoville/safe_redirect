@@ -34,7 +34,7 @@ for example, when fetching Open Graph data or executing Webhooks. If these
 URLs are not validated, an attacker can trick the server into making requests to
 the internal network or to the server itself.
 
-To prevent this type of vulnerability, use [Safeurl](https://hex.pm/packages/safeurl).
+To prevent this type of vulnerability, use [ReqSSRF](https://hex.pm/packages/req_ssrf).
 
 For more information, refer to https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html.
 
