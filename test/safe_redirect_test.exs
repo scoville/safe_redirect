@@ -233,6 +233,25 @@ defmodule SafeRedirectTest do
       assert redirected_to(conn) == "/"
       assert conn.halted
     end
+
+    test "raises if default URL is nil", %{conn: conn, opts: opts} do
+      assert_raise ArgumentError, ~r/Resolved value:\s+nil/, fn ->
+        SafeRedirect.redirect(conn, "https://evil.example", nil, opts)
+      end
+    end
+
+    test "raises if resolved URL has an unsupported scheme", %{conn: conn} do
+      opts = [allowed_redirect_uris: ["myapp://good.example"]]
+
+      assert_raise ArgumentError, ~r/myapp:\/\/good.example\/kittens/, fn ->
+        SafeRedirect.redirect(
+          conn,
+          "myapp://good.example/kittens",
+          "/",
+          opts
+        )
+      end
+    end
   end
 
   def allowed_redirect_uris, do: ["https://good.example"]

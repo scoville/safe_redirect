@@ -131,6 +131,10 @@ defmodule SafeRedirect do
     @doc """
     Resolves the given URL and performs an internal or external redirect.
 
+    Raises `ArgumentError` if the resolved URL is neither a relative path nor
+    an `http` or `https` URL, for example if the default value is `nil` or if
+    an allowed URI uses a different scheme.
+
     ## Examples
 
     Using configuration via application environment:
@@ -159,11 +163,28 @@ defmodule SafeRedirect do
     end
 
     def redirect(conn_or_socket, url, default \\ "/", opts \\ []) do
-      case resolve_url(url, default, opts) do
-        "https://" <> _ = url -> do_redirect(conn_or_socket, external: url)
-        "http://" <> _ = url -> do_redirect(conn_or_socket, external: url)
-        "/" <> _ = url -> do_redirect(conn_or_socket, to: url)
-      end
+      resolved_opts = url |> resolve_url(default, opts) |> redirect_opts()
+      do_redirect(conn_or_socket, resolved_opts)
+    end
+
+    defp redirect_opts("https://" <> _ = url), do: [external: url]
+    defp redirect_opts("http://" <> _ = url), do: [external: url]
+    defp redirect_opts("/" <> _ = url), do: [to: url]
+
+    defp redirect_opts(resolved) do
+      raise ArgumentError, """
+      cannot redirect to the resolved URL
+
+      SafeRedirect.redirect/4 can only redirect to a relative path starting
+      with "/" or to an absolute http or https URL.
+
+      Resolved value:
+
+          #{inspect(resolved)}
+
+      The resolved value is the given URL if it is allowed, or the default
+      value if it is not.
+      """
     end
 
     defp do_redirect(%Plug.Conn{} = conn, opts) do

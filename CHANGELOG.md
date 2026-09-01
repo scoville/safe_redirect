@@ -5,6 +5,11 @@ format. This project adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Fixed
+
+- Raise `ArgumentError` instead of `CaseClauseError` if the resolved URL cannot
+  be redirected to.
+
 ## [1.0.2] - 2026-07-30
 
 ### Security
