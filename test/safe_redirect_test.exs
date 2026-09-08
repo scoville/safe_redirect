@@ -236,6 +236,48 @@ defmodule SafeRedirectTest do
     end
   end
 
+  describe "allowed_redirect_uris option" do
+    test "raises for an unsupported option value" do
+      for value <- [%{}, nil, 42, {1, 2}] do
+        assert_raise ArgumentError, ~r/invalid :allowed_redirect_uris/, fn ->
+          SafeRedirect.valid_url?("https://good.example",
+            allowed_redirect_uris: value
+          )
+        end
+      end
+    end
+
+    test "raises for an unsupported entry" do
+      assert_raise ArgumentError, ~r/invalid entry/, fn ->
+        SafeRedirect.valid_url?("https://good.example",
+          allowed_redirect_uris: [:good_example]
+        )
+      end
+    end
+
+    test "raises if the module function does not exist" do
+      assert_raise ArgumentError, ~r/does not exist/, fn ->
+        SafeRedirect.valid_url?("https://good.example",
+          allowed_redirect_uris: {__MODULE__, :no_such_function}
+        )
+      end
+
+      assert_raise ArgumentError, ~r/does not exist/, fn ->
+        SafeRedirect.valid_url?("https://good.example",
+          allowed_redirect_uris: {NoSuchModule, :allowed_redirect_uris}
+        )
+      end
+    end
+
+    test "raises if the module function does not return a list" do
+      assert_raise ArgumentError, ~r/returned an invalid value/, fn ->
+        SafeRedirect.valid_url?("https://good.example",
+          allowed_redirect_uris: {__MODULE__, :not_a_list}
+        )
+      end
+    end
+  end
+
   describe "resolve_url/1" do
     test "returns URL if it is valid" do
       url = "https://good.example/login"
@@ -423,4 +465,6 @@ defmodule SafeRedirectTest do
   end
 
   def allowed_redirect_uris, do: ["https://good.example"]
+
+  def not_a_list, do: "https://good.example"
 end

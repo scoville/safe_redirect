@@ -5,6 +5,11 @@ format. This project adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Changed
+
+- Raise `ArgumentError` if invalid options are passed as
+  `:allowed_redirect_uris`.
+
 ### Fixed
 
 - Accept percent-encoded paths. `/caf%C3%A9` and `/some%20path` were previously

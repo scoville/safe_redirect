@@ -61,20 +61,85 @@ defmodule SafeRedirect do
   end
 
   defp get_allowed_redirect_uris(opts) do
-    opt =
-      Keyword.get(
-        opts,
-        :allowed_redirect_uris,
-        Application.get_env(:safe_redirect, :allowed_redirect_uris, [])
-      )
+    opts
+    |> Keyword.get(
+      :allowed_redirect_uris,
+      Application.get_env(:safe_redirect, :allowed_redirect_uris, [])
+    )
+    |> allowed_redirect_uris()
+  end
 
-    case opt do
+  defp allowed_redirect_uris(uris) when is_list(uris) do
+    Enum.map(uris, &validate_allowed_redirect_uri/1)
+  end
+
+  defp allowed_redirect_uris({module, fun})
+       when is_atom(module) and is_atom(fun) do
+    ensure_exported!(module, fun)
+
+    case apply(module, fun, []) do
       uris when is_list(uris) ->
-        uris
+        allowed_redirect_uris(uris)
 
-      {module, fun} when is_atom(module) and is_atom(fun) ->
-        apply(module, fun, [])
+      other ->
+        raise ArgumentError, """
+        #{inspect(module)}.#{fun}/0 returned an invalid value
+
+        A function referenced with {module, function} tuple given as
+        :allowed_redirect_uris must return a list of strings or URI structs.
+
+        Got:
+
+            #{inspect(other)}
+        """
     end
+  end
+
+  defp allowed_redirect_uris(other) do
+    raise ArgumentError, """
+    invalid :allowed_redirect_uris option
+
+    Expected a list of strings or URI structs, or a {module, function}
+    tuple returning such a list.
+
+    Got:
+
+        #{inspect(other)}
+    """
+  end
+
+  defp ensure_exported!(module, fun) do
+    if Code.ensure_loaded?(module) and function_exported?(module, fun, 0) do
+      :ok
+    else
+      raise ArgumentError, """
+      invalid :allowed_redirect_uris option
+
+      The tuple given as :allowed_redirect_uris references a function that
+      does not exist.
+
+      Expected this function to exist:
+
+          #{inspect(module)}.#{fun}/0
+      """
+    end
+  end
+
+  defp validate_allowed_redirect_uri(uri)
+       when is_binary(uri) or is_struct(uri, URI) do
+    uri
+  end
+
+  defp validate_allowed_redirect_uri(other) do
+    raise ArgumentError, """
+    invalid entry in the :allowed_redirect_uris option
+
+    Every entry must be a string or a URI struct.
+
+    Got:
+
+        #{inspect(other)}
+    """
   end
 
   defp uris_match?(%URI{} = uri_a, %URI{} = uri_b) do
