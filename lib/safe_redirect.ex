@@ -73,6 +73,10 @@ defmodule SafeRedirect do
     Enum.map(uris, &validate_allowed_redirect_uri/1)
   end
 
+  defp allowed_redirect_uris(uri) when is_binary(uri) or is_struct(uri, URI) do
+    allowed_redirect_uris([uri])
+  end
+
   defp allowed_redirect_uris({module, fun})
        when is_atom(module) and is_atom(fun) do
     ensure_exported!(module, fun)
@@ -99,8 +103,8 @@ defmodule SafeRedirect do
     raise ArgumentError, """
     invalid :allowed_redirect_uris option
 
-    Expected a list of strings or URI structs, or a {module, function}
-    tuple returning such a list.
+    Expected a list of strings or URI structs, a single string or URI
+    struct, or a {module, function} tuple returning such a list.
 
     Got:
 

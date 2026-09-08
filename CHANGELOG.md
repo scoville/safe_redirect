@@ -5,6 +5,10 @@ format. This project adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Added
+
+- Accept a single string or `URI` struct as `:allowed_redirect_uris`.
+
 ### Changed
 
 - Raise `ArgumentError` if invalid options are passed as

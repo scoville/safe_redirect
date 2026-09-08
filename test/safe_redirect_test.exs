@@ -237,6 +237,16 @@ defmodule SafeRedirectTest do
   end
 
   describe "allowed_redirect_uris option" do
+    test "accepts a bare string or URI struct" do
+      assert SafeRedirect.valid_url?("https://good.example",
+               allowed_redirect_uris: "https://good.example"
+             )
+
+      assert SafeRedirect.valid_url?("https://good.example",
+               allowed_redirect_uris: URI.new!("https://good.example")
+             )
+    end
+
     test "raises for an unsupported option value" do
       for value <- [%{}, nil, 42, {1, 2}] do
         assert_raise ArgumentError, ~r/invalid :allowed_redirect_uris/, fn ->
