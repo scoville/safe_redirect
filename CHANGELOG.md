@@ -17,6 +17,8 @@ format. This project adheres to [Semantic Versioning](https://semver.org/spec/v2
 - Raise `ArgumentError` if an allowed redirect URI has no scheme or host.
 - Raise `ArgumentError` if an allowed redirect URI has a path, query string,
   fragment, or userinfo.
+- Raise `ArgumentError` if the host of an allowed redirect URI has a trailing
+  dot.
 
 ### Fixed
 

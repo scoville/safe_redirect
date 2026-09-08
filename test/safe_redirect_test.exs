@@ -297,6 +297,14 @@ defmodule SafeRedirectTest do
       end
     end
 
+    test "raises for an entry with a trailing dot in the host" do
+      assert_raise ArgumentError, ~r/trailing dot/, fn ->
+        SafeRedirect.valid_url?("https://good.example",
+          allowed_redirect_uris: ["https://good.example."]
+        )
+      end
+    end
+
     test "accepts an entry with no path or a root path" do
       assert SafeRedirect.valid_url?("https://good.example",
                allowed_redirect_uris: [

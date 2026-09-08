@@ -184,6 +184,20 @@ defmodule SafeRedirect do
       """
     end
 
+    if trailing_dot_host?(uri) do
+      raise ArgumentError, """
+      allowed redirect URI with a trailing dot in the host
+
+      The host is compared exactly, and a trailing dot is part of it. The
+      entry would only match URLs that also end with a dot. Write the host
+      without it.
+
+      Got:
+
+          #{inspect(URI.to_string(uri))}
+      """
+    end
+
     :ok
   end
 
@@ -192,6 +206,10 @@ defmodule SafeRedirect do
 
     path not in [nil, "/"] or not is_nil(query) or not is_nil(fragment) or
       not is_nil(userinfo)
+  end
+
+  defp trailing_dot_host?(%URI{host: host}) do
+    String.ends_with?(host, ".")
   end
 
   defp uris_match?(%URI{} = uri_a, %URI{} = uri_b) do
