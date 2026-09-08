@@ -56,11 +56,6 @@ defmodule SafeRedirect do
   reject such a host.
   """
 
-  # A browser strips tabs, newlines and carriage returns from a URL before
-  # parsing it, which can turn a path into a protocol-relative URL pointing at
-  # another host. No control character belongs in a redirect target.
-  @control_chars Enum.map(0..0x1F, &<<&1>>) ++ ["\x7F"]
-
   @typedoc """
   A URL, either as a string or as a `URI` struct.
   """
@@ -126,10 +121,12 @@ defmodule SafeRedirect do
   def valid_url?(%URI{host: host}, _) when host in [nil, ""], do: false
 
   def valid_url?(%URI{path: path} = uri, opts) do
-    valid_path?(path) &&
-      opts
-      |> get_allowed_redirect_uris()
-      |> Enum.any?(&uris_match?(&1, uri))
+    valid_path?(path) && allowed?(uri, get_allowed_redirect_uris(opts))
+  end
+
+  defp allowed?(%URI{} = uri, allowed_uris) do
+    authority = authority(uri)
+    Enum.any?(allowed_uris, &(authority(&1) == authority))
   end
 
   defp get_allowed_redirect_uris(opts) do
@@ -142,7 +139,7 @@ defmodule SafeRedirect do
   end
 
   defp allowed_redirect_uris(uris) when is_list(uris) do
-    Enum.map(uris, &validate_allowed_redirect_uri/1)
+    Enum.flat_map(uris, &comparable_uri/1)
   end
 
   defp allowed_redirect_uris(uri) when is_binary(uri) or is_struct(uri, URI) do
@@ -201,21 +198,20 @@ defmodule SafeRedirect do
     end
   end
 
-  defp validate_allowed_redirect_uri(uri) when is_binary(uri) do
+  # An entry that cannot be parsed is dropped, since it can never match.
+  defp comparable_uri(uri) when is_binary(uri) do
     case URI.new(uri) do
-      {:ok, parsed} -> validate_comparable_uri!(parsed)
-      {:error, _} -> :ok
+      {:ok, parsed} -> comparable_uri(parsed)
+      {:error, _} -> []
     end
-
-    uri
   end
 
-  defp validate_allowed_redirect_uri(%URI{} = uri) do
+  defp comparable_uri(%URI{} = uri) do
     validate_comparable_uri!(uri)
-    uri
+    [uri]
   end
 
-  defp validate_allowed_redirect_uri(other) do
+  defp comparable_uri(other) do
     raise ArgumentError, """
     invalid entry in the :allowed_redirect_uris option
 
@@ -284,17 +280,6 @@ defmodule SafeRedirect do
     String.ends_with?(host, ".")
   end
 
-  defp uris_match?(%URI{} = uri_a, %URI{} = uri_b) do
-    authority(uri_a) == authority(uri_b)
-  end
-
-  defp uris_match?(url, %URI{} = uri_b) when is_binary(url) do
-    case URI.new(url) do
-      {:ok, uri_a} -> uris_match?(uri_a, uri_b)
-      {:error, _} -> false
-    end
-  end
-
   defp authority(%URI{host: host, port: port, scheme: scheme}) do
     {String.downcase(host), port, String.downcase(scheme)}
   end
@@ -302,19 +287,30 @@ defmodule SafeRedirect do
   defp valid_path?(path) when is_binary(path) do
     decoded = URI.decode(path)
 
-    not String.contains?(decoded, @control_chars) and
-      not protocol_relative?(path) and
+    not control_char?(decoded) and
+      not protocol_relative?(decoded) and
       decoded |> Path.split() |> Enum.all?(&(&1 not in [".", ".."]))
   end
 
   defp valid_path?(nil), do: true
 
+  # No control character belongs in a redirect target.
+  defp control_char?(<<b, _::binary>>) when b <= 0x1F or b == 0x7F, do: true
+  defp control_char?(<<_, rest::binary>>), do: control_char?(rest)
+  defp control_char?(<<>>), do: false
+
+  # A browser strips tabs, newlines and carriage returns from a URL before
+  # parsing it, which can turn a path into a protocol-relative URL pointing at
+  # another host. Takes a decoded path.
   defp protocol_relative?(path) do
     path
-    |> URI.decode()
-    |> String.replace(@control_chars, "")
+    |> strip_control_chars()
     |> String.replace("\\", "/")
     |> String.starts_with?("//")
+  end
+
+  defp strip_control_chars(string) do
+    for <<b <- string>>, b > 0x1F and b != 0x7F, into: <<>>, do: <<b>>
   end
 
   @doc """
@@ -418,7 +414,7 @@ defmodule SafeRedirect do
     defp redirect_target("http://" <> _ = url), do: {:external, url}
 
     defp redirect_target("/" <> _ = url) do
-      if protocol_relative?(url) do
+      if protocol_relative?(URI.decode(url)) do
         raise_unredirectable(url)
       else
         {:to, url}
