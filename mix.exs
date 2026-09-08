@@ -1,7 +1,7 @@
 defmodule SafeRedirect.MixProject do
   use Mix.Project
 
-  @version "1.0.2"
+  @version "2.0.0"
   @source_url "https://github.com/scoville/safe_redirect"
 
   def project do
@@ -35,8 +35,7 @@ defmodule SafeRedirect.MixProject do
         list_unused_filters: true,
         # Set location of the persistent lookup table
         plt_file: {:no_warn, ".plts/dialyzer.plt"}
-      ],
-      hex: [policy: [org: "scoville", name: "baseline"]]
+      ]
     ]
   end
 
@@ -79,7 +78,6 @@ defmodule SafeRedirect.MixProject do
 
   defp package do
     [
-      organization: "scoville",
       licenses: ["Apache-2.0"],
       links: %{
         "GitHub" => @source_url,

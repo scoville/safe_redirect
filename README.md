@@ -10,7 +10,7 @@ Add `safe_redirect` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:safe_redirect, "~> 1.0.2", organization: "scoville"}
+    {:safe_redirect, "~> 2.0.0"}
   ]
 end
 ```
