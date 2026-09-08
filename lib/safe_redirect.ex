@@ -1,6 +1,59 @@
 defmodule SafeRedirect do
   @moduledoc """
-  Documentation for `SafeRedirect`.
+  Validates and resolves redirect URLs to prevent Open Redirect
+  vulnerabilities.
+
+  - `valid_url?/2` returns whether a URL is allowed.
+  - `resolve_url/3` returns the URL if it is allowed, or a default value if it
+    is not.
+  - `redirect/4` resolves the URL and performs the redirect.
+
+  ## Allowed redirect URIs
+
+  All functions take an `:allowed_redirect_uris` option. The value is a list of
+  strings or `URI` structs, a single string or `URI` struct, or a
+  `{module, function}` tuple that returns such a list. The function is called
+  every time a URL is validated.
+
+      SafeRedirect.valid_url?(url,
+        allowed_redirect_uris: ["https://good.example"]
+      )
+
+      SafeRedirect.valid_url?(url,
+        allowed_redirect_uris: {MyAppWeb.RedirectURIs, :allowed_redirect_uris}
+      )
+
+  If the option is omitted, the value is read from the application environment
+  at call time, defaulting to an empty list.
+
+      config :safe_redirect,
+        allowed_redirect_uris: {MyAppWeb.RedirectURIs, :allowed_redirect_uris}
+
+  ## Validation rules
+
+  - Relative paths starting with `/` are allowed without checking the allowed
+    URIs.
+  - Absolute URLs are allowed if the scheme, host, and port match one of the
+    allowed URIs. The scheme and host are compared case-insensitively.
+  - A trailing dot is part of the host, so `https://good.example.` does not
+    match an allowed `https://good.example`.
+  - Protocol-relative URLs starting with `//` are not allowed.
+  - A URL with a scheme but no host is not allowed. `mailto:`, `javascript:`,
+    and `data:` URLs are always refused.
+  - Paths must not contain dot segments (`.` or `..`), literal or encoded.
+  - Paths must not contain control characters, literal or encoded.
+  - Percent-encoded characters are decoded before a path is checked, so
+    `/some%2Fpath` is treated as `/some/path`.
+  - An allowed URI may not have a path, query string, fragment, or userinfo,
+    since only the scheme, host, and port are compared.
+
+  An invalid `:allowed_redirect_uris` option raises `ArgumentError` in every
+  function.
+
+  A URL given as a string is parsed with `URI.new/1`, which rejects a host that
+  is not ASCII. A `URI` struct is taken as given. If you build a `URI` struct
+  from a string, use `URI.new/1` rather than `URI.parse/1`, which does not
+  reject such a host.
   """
 
   # A browser strips tabs, newlines and carriage returns from a URL before
@@ -27,10 +80,12 @@ defmodule SafeRedirect do
   @type opts :: [allowed_redirect_uris: allowed_redirect_uris()]
 
   @doc """
-  Takes a URL as a string and determines whether it points to an allowed
-  host.
+  Takes a URL as a string or `URI` struct and determines whether it points to
+  an allowed host.
 
-  Relative URLs are always considered allowed.
+  Relative paths are allowed without checking the allowed URIs. See the module
+  documentation for the validation rules and the `:allowed_redirect_uris`
+  option.
 
   ## Examples
 
@@ -62,10 +117,9 @@ defmodule SafeRedirect do
     valid_path?(path)
   end
 
-  def valid_url?(%URI{scheme: nil}, _) do
-    # weird path
-    false
-  end
+  # A URL with no scheme that is not a root-relative path: a protocol-relative
+  # URL, or a relative path such as "foo/bar".
+  def valid_url?(%URI{scheme: nil}, _), do: false
 
   # A scheme with no host is not a redirect target: mailto:, javascript: and
   # data: parse as a scheme plus a path.
@@ -267,6 +321,13 @@ defmodule SafeRedirect do
   Returns the given URL if it is a valid redirect URL or the default value
   otherwise.
 
+  The URL is returned unchanged, so passing a `URI` struct returns a `URI`
+  struct. Any other value, including `nil`, returns the default value. The
+  default value is returned as given and is not validated.
+
+  See the module documentation for the validation rules and the
+  `:allowed_redirect_uris` option.
+
   ## Examples
 
       iex> url = "https://good.example/login"
@@ -297,6 +358,19 @@ defmodule SafeRedirect do
   if Code.ensure_loaded?(Plug.Conn) do
     @doc """
     Resolves the given URL and performs an internal or external redirect.
+
+    Resolves `url` against the allowed URIs with `resolve_url/3`, falling back
+    to `default`, then redirects to the result.
+
+    Accepts a `Plug.Conn` or, when `Phoenix.LiveView` is available, a
+    `Phoenix.LiveView.Socket`, and returns the same type it was given.
+
+    A root-relative path is an internal redirect and an absolute `http` or
+    `https` URL an external one. For a LiveView socket these are passed to
+    `Phoenix.LiveView.redirect/2` as `to:` and `external:`; for a `Plug.Conn`
+    both set the `location` header.
+
+    Given a `Plug.Conn`, the connection is halted.
 
     Raises `ArgumentError` if the resolved URL is neither a relative path nor
     an `http` or `https` URL, for example if the default value is `nil` or if

@@ -109,6 +109,11 @@ defmodule SafeRedirectTest do
       refute SafeRedirect.valid_url?("https:///x", opts)
     end
 
+    test "ignores query strings and fragments" do
+      assert SafeRedirect.valid_url?("/some/path?foo=bar", [])
+      assert SafeRedirect.valid_url?("/some/path#section", [])
+    end
+
     test "does not accept protocol-relative URLs" do
       refute SafeRedirect.valid_url?("//evil.url", [])
       refute SafeRedirect.valid_url?("//evil.example", [])
