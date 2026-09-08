@@ -77,15 +77,8 @@ defmodule SafeRedirect do
     end
   end
 
-  defp uris_match?(
-         %URI{host: host, port: port, scheme: scheme},
-         %URI{host: host, port: port, scheme: scheme}
-       ) do
-    true
-  end
-
-  defp uris_match?(%URI{}, %URI{}) do
-    false
+  defp uris_match?(%URI{} = uri_a, %URI{} = uri_b) do
+    authority(uri_a) == authority(uri_b)
   end
 
   defp uris_match?(url, %URI{} = uri_b) when is_binary(url) do
@@ -94,6 +87,13 @@ defmodule SafeRedirect do
       {:error, _} -> false
     end
   end
+
+  defp authority(%URI{host: host, port: port, scheme: scheme}) do
+    {downcase(host), port, downcase(scheme)}
+  end
+
+  defp downcase(nil), do: nil
+  defp downcase(string), do: String.downcase(string)
 
   defp valid_path?(path) when is_binary(path) do
     decoded = URI.decode(path)

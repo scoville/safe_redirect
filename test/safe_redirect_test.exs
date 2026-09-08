@@ -66,6 +66,27 @@ defmodule SafeRedirectTest do
       assert SafeRedirect.valid_url?("https://good.example/some/path/", opts)
     end
 
+    test "compares hosts case-insensitively" do
+      assert SafeRedirect.valid_url?("https://GOOD.EXAMPLE/x",
+               allowed_redirect_uris: ["https://good.example"]
+             )
+
+      assert SafeRedirect.valid_url?("https://good.example/x",
+               allowed_redirect_uris: ["https://GOOD.EXAMPLE"]
+             )
+
+      refute SafeRedirect.valid_url?("https://good.example.evil.corp.example",
+               allowed_redirect_uris: ["https://GOOD.EXAMPLE"]
+             )
+    end
+
+    test "does not accept a non-ASCII host that downcases to an allowed one" do
+      refute SafeRedirect.valid_url?(
+               "https://o" <> <<0x212A::utf8>> <> ".example",
+               allowed_redirect_uris: ["https://ok.example"]
+             )
+    end
+
     test "does not accept nil" do
       refute SafeRedirect.valid_url?(nil)
       refute SafeRedirect.valid_url?(nil, [])
@@ -94,6 +115,12 @@ defmodule SafeRedirectTest do
 
       refute SafeRedirect.valid_url?("https:///x",
                allowed_redirect_uris: ["https://good.example"]
+             )
+    end
+
+    test "does not match an allowed URI that has no host" do
+      refute SafeRedirect.valid_url?("https://good.example",
+               allowed_redirect_uris: ["mailto:x@y", "/some/path"]
              )
     end
 
