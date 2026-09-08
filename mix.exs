@@ -79,12 +79,12 @@ defmodule SafeRedirect.MixProject do
   defp package do
     [
       organization: "scoville",
-      licenses: [],
+      licenses: ["Apache-2.0"],
       links: %{
         "GitHub" => @source_url,
         "Changelog" => @source_url <> "/blob/main/CHANGELOG.md"
       },
-      files: ~w(lib mix.exs README* CHANGELOG*)
+      files: ~w(lib mix.exs LICENSE README* CHANGELOG*)
     ]
   end
 
