@@ -56,11 +56,6 @@ defmodule SafeRedirect do
   reject such a host.
   """
 
-  # A browser strips tabs, newlines and carriage returns from a URL before
-  # parsing it, which can turn a path into a protocol-relative URL pointing at
-  # another host. No control character belongs in a redirect target.
-  @control_chars Enum.map(0..0x1F, &<<&1>>) ++ ["\x7F"]
-
   @typedoc """
   A URL, either as a string or as a `URI` struct.
   """
@@ -309,16 +304,24 @@ defmodule SafeRedirect do
 
   defp valid_path?(nil), do: true
 
+  # No control character belongs in a redirect target.
   defp control_char?(<<b, _::binary>>) when b <= 0x1F or b == 0x7F, do: true
   defp control_char?(<<_, rest::binary>>), do: control_char?(rest)
   defp control_char?(<<>>), do: false
 
+  # A browser strips tabs, newlines and carriage returns from a URL before
+  # parsing it, which can turn a path into a protocol-relative URL pointing at
+  # another host.
   defp protocol_relative?(path) do
     path
     |> URI.decode()
-    |> String.replace(@control_chars, "")
+    |> strip_control_chars()
     |> String.replace("\\", "/")
     |> String.starts_with?("//")
+  end
+
+  defp strip_control_chars(string) do
+    for <<b <- string>>, b > 0x1F and b != 0x7F, into: <<>>, do: <<b>>
   end
 
   @doc """
