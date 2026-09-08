@@ -101,27 +101,12 @@ defmodule SafeRedirectTest do
     end
 
     test "does not accept a scheme without a host" do
-      refute SafeRedirect.valid_url?("mailto:a@b",
-               allowed_redirect_uris: ["mailto:x@y"]
-             )
+      opts = [allowed_redirect_uris: ["https://good.example"]]
 
-      refute SafeRedirect.valid_url?("javascript:alert(1)",
-               allowed_redirect_uris: ["javascript:foo"]
-             )
-
-      refute SafeRedirect.valid_url?("data:text/html,x",
-               allowed_redirect_uris: ["data:text/plain,y"]
-             )
-
-      refute SafeRedirect.valid_url?("https:///x",
-               allowed_redirect_uris: ["https://good.example"]
-             )
-    end
-
-    test "does not match an allowed URI that has no host" do
-      refute SafeRedirect.valid_url?("https://good.example",
-               allowed_redirect_uris: ["mailto:x@y", "/some/path"]
-             )
+      refute SafeRedirect.valid_url?("mailto:a@b", opts)
+      refute SafeRedirect.valid_url?("javascript:alert(1)", opts)
+      refute SafeRedirect.valid_url?("data:text/html,x", opts)
+      refute SafeRedirect.valid_url?("https:///x", opts)
     end
 
     test "does not accept protocol-relative URLs" do
@@ -284,6 +269,16 @@ defmodule SafeRedirectTest do
         SafeRedirect.valid_url?("https://good.example",
           allowed_redirect_uris: {__MODULE__, :not_a_list}
         )
+      end
+    end
+
+    test "raises for an entry without a scheme or host" do
+      for entry <- ["mailto:x@y", "/some/path", "https:///x", "//good.example"] do
+        assert_raise ArgumentError, ~r/without a scheme or host/, fn ->
+          SafeRedirect.valid_url?("https://good.example",
+            allowed_redirect_uris: [entry]
+          )
+        end
       end
     end
 

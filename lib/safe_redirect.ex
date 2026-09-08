@@ -129,8 +129,17 @@ defmodule SafeRedirect do
     end
   end
 
-  defp validate_allowed_redirect_uri(uri)
-       when is_binary(uri) or is_struct(uri, URI) do
+  defp validate_allowed_redirect_uri(uri) when is_binary(uri) do
+    case URI.new(uri) do
+      {:ok, parsed} -> validate_comparable_uri!(parsed)
+      {:error, _} -> :ok
+    end
+
+    uri
+  end
+
+  defp validate_allowed_redirect_uri(%URI{} = uri) do
+    validate_comparable_uri!(uri)
     uri
   end
 
@@ -146,6 +155,22 @@ defmodule SafeRedirect do
     """
   end
 
+  defp validate_comparable_uri!(%URI{scheme: scheme, host: host} = uri)
+       when is_nil(scheme) or host in [nil, ""] do
+    raise ArgumentError, """
+    allowed redirect URI without a scheme or host
+
+    Only the scheme, host, and port of an allowed URI are compared. An
+    entry missing either can never match.
+
+    Got:
+
+        #{inspect(URI.to_string(uri))}
+    """
+  end
+
+  defp validate_comparable_uri!(%URI{}), do: :ok
+
   defp uris_match?(%URI{} = uri_a, %URI{} = uri_b) do
     authority(uri_a) == authority(uri_b)
   end
@@ -158,11 +183,8 @@ defmodule SafeRedirect do
   end
 
   defp authority(%URI{host: host, port: port, scheme: scheme}) do
-    {downcase(host), port, downcase(scheme)}
+    {String.downcase(host), port, String.downcase(scheme)}
   end
-
-  defp downcase(nil), do: nil
-  defp downcase(string), do: String.downcase(string)
 
   defp valid_path?(path) when is_binary(path) do
     decoded = URI.decode(path)
