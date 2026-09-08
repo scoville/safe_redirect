@@ -8,18 +8,11 @@ metadata:
 spec:
   type: library
   businessUnit: hr
-  public: false
+  public: true
   lifecycle: production
   owner: group:default/poblano
   github:
     team: poblano
-  linear:
-    teamIdentifier: POB
-  slack:
-    channels:
-      - 40_poblano
-  slite:
-    channelId: uzBZIPBP3mvsKT
   technologies:
     - elixir
   capabilities:
