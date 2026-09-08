@@ -302,12 +302,16 @@ defmodule SafeRedirect do
   defp valid_path?(path) when is_binary(path) do
     decoded = URI.decode(path)
 
-    not String.contains?(decoded, @control_chars) and
+    not control_char?(decoded) and
       not protocol_relative?(path) and
       decoded |> Path.split() |> Enum.all?(&(&1 not in [".", ".."]))
   end
 
   defp valid_path?(nil), do: true
+
+  defp control_char?(<<b, _::binary>>) when b <= 0x1F or b == 0x7F, do: true
+  defp control_char?(<<_, rest::binary>>), do: control_char?(rest)
+  defp control_char?(<<>>), do: false
 
   defp protocol_relative?(path) do
     path
