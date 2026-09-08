@@ -101,27 +101,12 @@ defmodule SafeRedirectTest do
     end
 
     test "does not accept a scheme without a host" do
-      refute SafeRedirect.valid_url?("mailto:a@b",
-               allowed_redirect_uris: ["mailto:x@y"]
-             )
+      opts = [allowed_redirect_uris: ["https://good.example"]]
 
-      refute SafeRedirect.valid_url?("javascript:alert(1)",
-               allowed_redirect_uris: ["javascript:foo"]
-             )
-
-      refute SafeRedirect.valid_url?("data:text/html,x",
-               allowed_redirect_uris: ["data:text/plain,y"]
-             )
-
-      refute SafeRedirect.valid_url?("https:///x",
-               allowed_redirect_uris: ["https://good.example"]
-             )
-    end
-
-    test "does not match an allowed URI that has no host" do
-      refute SafeRedirect.valid_url?("https://good.example",
-               allowed_redirect_uris: ["mailto:x@y", "/some/path"]
-             )
+      refute SafeRedirect.valid_url?("mailto:a@b", opts)
+      refute SafeRedirect.valid_url?("javascript:alert(1)", opts)
+      refute SafeRedirect.valid_url?("data:text/html,x", opts)
+      refute SafeRedirect.valid_url?("https:///x", opts)
     end
 
     test "does not accept protocol-relative URLs" do
@@ -233,6 +218,124 @@ defmodule SafeRedirectTest do
 
     test "does not accept invalid URL" do
       refute SafeRedirect.valid_url?("¥")
+    end
+  end
+
+  describe "allowed_redirect_uris option" do
+    test "accepts a bare string or URI struct" do
+      assert SafeRedirect.valid_url?("https://good.example",
+               allowed_redirect_uris: "https://good.example"
+             )
+
+      assert SafeRedirect.valid_url?("https://good.example",
+               allowed_redirect_uris: URI.new!("https://good.example")
+             )
+    end
+
+    test "raises for an unsupported option value" do
+      for value <- [%{}, nil, 42, {1, 2}] do
+        assert_raise ArgumentError, ~r/invalid :allowed_redirect_uris/, fn ->
+          SafeRedirect.valid_url?("https://good.example",
+            allowed_redirect_uris: value
+          )
+        end
+      end
+    end
+
+    test "raises for an unsupported entry" do
+      assert_raise ArgumentError, ~r/invalid entry/, fn ->
+        SafeRedirect.valid_url?("https://good.example",
+          allowed_redirect_uris: [:good_example]
+        )
+      end
+    end
+
+    test "raises if the module function does not exist" do
+      assert_raise ArgumentError, ~r/does not exist/, fn ->
+        SafeRedirect.valid_url?("https://good.example",
+          allowed_redirect_uris: {__MODULE__, :no_such_function}
+        )
+      end
+
+      assert_raise ArgumentError, ~r/does not exist/, fn ->
+        SafeRedirect.valid_url?("https://good.example",
+          allowed_redirect_uris: {NoSuchModule, :allowed_redirect_uris}
+        )
+      end
+    end
+
+    test "raises if the module function does not return a list" do
+      assert_raise ArgumentError, ~r/returned an invalid value/, fn ->
+        SafeRedirect.valid_url?("https://good.example",
+          allowed_redirect_uris: {__MODULE__, :not_a_list}
+        )
+      end
+    end
+
+    test "raises for an entry without a scheme or host" do
+      for entry <- ["mailto:x@y", "/some/path", "https:///x", "//good.example"] do
+        assert_raise ArgumentError, ~r/without a scheme or host/, fn ->
+          SafeRedirect.valid_url?("https://good.example",
+            allowed_redirect_uris: [entry]
+          )
+        end
+      end
+    end
+
+    test "raises for an entry with a path, query, fragment, or userinfo" do
+      for entry <- [
+            "https://good.example/tenant-a",
+            "https://good.example/?a=1",
+            "https://good.example/#section",
+            "https://user@good.example"
+          ] do
+        assert_raise ArgumentError, ~r/ignored parts/, fn ->
+          SafeRedirect.valid_url?("https://good.example/admin",
+            allowed_redirect_uris: [entry]
+          )
+        end
+      end
+    end
+
+    test "raises for an entry with a trailing dot in the host" do
+      assert_raise ArgumentError, ~r/trailing dot/, fn ->
+        SafeRedirect.valid_url?("https://good.example",
+          allowed_redirect_uris: ["https://good.example."]
+        )
+      end
+    end
+
+    test "accepts an entry with no path or a root path" do
+      assert SafeRedirect.valid_url?("https://good.example",
+               allowed_redirect_uris: [
+                 "https://good.example",
+                 "https://a.example/"
+               ]
+             )
+    end
+
+    test "raises for an unsupported option key" do
+      error =
+        assert_raise ArgumentError, fn ->
+          SafeRedirect.valid_url?("https://good.example",
+            allowed_redirect_uri: ["https://good.example"]
+          )
+        end
+
+      assert Exception.message(error) =~ "unknown keys [:allowed_redirect_uri]"
+    end
+
+    test "raises for a duplicated option key" do
+      error =
+        assert_raise ArgumentError, fn ->
+          SafeRedirect.valid_url?("https://good.example",
+            allowed_redirect_uris: ["https://good.example"],
+            allowed_redirect_uris: []
+          )
+        end
+
+      assert Exception.message(error) =~
+               "duplicate keys [:allowed_redirect_uris]"
     end
   end
 
@@ -423,4 +526,6 @@ defmodule SafeRedirectTest do
   end
 
   def allowed_redirect_uris, do: ["https://good.example"]
+
+  def not_a_list, do: "https://good.example"
 end

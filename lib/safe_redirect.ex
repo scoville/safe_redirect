@@ -8,6 +8,24 @@ defmodule SafeRedirect do
   # another host. No control character belongs in a redirect target.
   @control_chars Enum.map(0..0x1F, &<<&1>>) ++ ["\x7F"]
 
+  @typedoc """
+  A URL, either as a string or as a `URI` struct.
+  """
+  @type uri_source :: String.t() | URI.t()
+
+  @typedoc """
+  The value of the `:allowed_redirect_uris` option.
+
+  See the module documentation for the accepted shapes.
+  """
+  @type allowed_redirect_uris ::
+          [uri_source()] | uri_source() | {module(), atom()}
+
+  @typedoc """
+  Options accepted by all functions.
+  """
+  @type opts :: [allowed_redirect_uris: allowed_redirect_uris()]
+
   @doc """
   Takes a URL as a string and determines whether it points to an allowed
   host.
@@ -28,7 +46,7 @@ defmodule SafeRedirect do
       iex> valid_url?(url, allowed_redirect_uris: ["https://good.example"])
       false
   """
-  @spec valid_url?(String.t() | URI.t() | nil, keyword) :: boolean
+  @spec valid_url?(uri_source() | nil, opts()) :: boolean
   def valid_url?(url, opts \\ [])
 
   def valid_url?(nil, _), do: false
@@ -61,20 +79,155 @@ defmodule SafeRedirect do
   end
 
   defp get_allowed_redirect_uris(opts) do
-    opt =
-      Keyword.get(
-        opts,
-        :allowed_redirect_uris,
-        Application.get_env(:safe_redirect, :allowed_redirect_uris, [])
-      )
+    default = Application.get_env(:safe_redirect, :allowed_redirect_uris, [])
 
-    case opt do
+    opts
+    |> Keyword.validate!(allowed_redirect_uris: default)
+    |> Keyword.fetch!(:allowed_redirect_uris)
+    |> allowed_redirect_uris()
+  end
+
+  defp allowed_redirect_uris(uris) when is_list(uris) do
+    Enum.map(uris, &validate_allowed_redirect_uri/1)
+  end
+
+  defp allowed_redirect_uris(uri) when is_binary(uri) or is_struct(uri, URI) do
+    allowed_redirect_uris([uri])
+  end
+
+  defp allowed_redirect_uris({module, fun})
+       when is_atom(module) and is_atom(fun) do
+    ensure_exported!(module, fun)
+
+    case apply(module, fun, []) do
       uris when is_list(uris) ->
-        uris
+        allowed_redirect_uris(uris)
 
-      {module, fun} when is_atom(module) and is_atom(fun) ->
-        apply(module, fun, [])
+      other ->
+        raise ArgumentError, """
+        #{inspect(module)}.#{fun}/0 returned an invalid value
+
+        A function referenced with {module, function} tuple given as
+        :allowed_redirect_uris must return a list of strings or URI structs.
+
+        Got:
+
+            #{inspect(other)}
+        """
     end
+  end
+
+  defp allowed_redirect_uris(other) do
+    raise ArgumentError, """
+    invalid :allowed_redirect_uris option
+
+    Expected a list of strings or URI structs, a single string or URI
+    struct, or a {module, function} tuple returning such a list.
+
+    Got:
+
+        #{inspect(other)}
+    """
+  end
+
+  defp ensure_exported!(module, fun) do
+    if Code.ensure_loaded?(module) and function_exported?(module, fun, 0) do
+      :ok
+    else
+      raise ArgumentError, """
+      invalid :allowed_redirect_uris option
+
+      The tuple given as :allowed_redirect_uris references a function that
+      does not exist.
+
+      Expected this function to exist:
+
+          #{inspect(module)}.#{fun}/0
+      """
+    end
+  end
+
+  defp validate_allowed_redirect_uri(uri) when is_binary(uri) do
+    case URI.new(uri) do
+      {:ok, parsed} -> validate_comparable_uri!(parsed)
+      {:error, _} -> :ok
+    end
+
+    uri
+  end
+
+  defp validate_allowed_redirect_uri(%URI{} = uri) do
+    validate_comparable_uri!(uri)
+    uri
+  end
+
+  defp validate_allowed_redirect_uri(other) do
+    raise ArgumentError, """
+    invalid entry in the :allowed_redirect_uris option
+
+    Every entry must be a string or a URI struct.
+
+    Got:
+
+        #{inspect(other)}
+    """
+  end
+
+  defp validate_comparable_uri!(%URI{scheme: scheme, host: host} = uri)
+       when is_nil(scheme) or host in [nil, ""] do
+    raise ArgumentError, """
+    allowed redirect URI without a scheme or host
+
+    Only the scheme, host, and port of an allowed URI are compared. An
+    entry missing either can never match.
+
+    Got:
+
+        #{inspect(URI.to_string(uri))}
+    """
+  end
+
+  defp validate_comparable_uri!(%URI{} = uri) do
+    if ignored_uri_parts?(uri) do
+      raise ArgumentError, """
+      allowed redirect URI with ignored parts
+
+      Only the scheme, host, and port of an allowed URI are compared. Path,
+      query, fragment, and userinfo are ignored. Make sure the allowed URIs
+      only define the origin.
+
+      Got:
+
+          #{inspect(URI.to_string(uri))}
+      """
+    end
+
+    if trailing_dot_host?(uri) do
+      raise ArgumentError, """
+      allowed redirect URI with a trailing dot in the host
+
+      The host is compared exactly, and a trailing dot is part of it. The
+      entry would only match URLs that also end with a dot. Write the host
+      without it.
+
+      Got:
+
+          #{inspect(URI.to_string(uri))}
+      """
+    end
+
+    :ok
+  end
+
+  defp ignored_uri_parts?(%URI{} = uri) do
+    %URI{path: path, query: query, fragment: fragment, userinfo: userinfo} = uri
+
+    path not in [nil, "/"] or not is_nil(query) or not is_nil(fragment) or
+      not is_nil(userinfo)
+  end
+
+  defp trailing_dot_host?(%URI{host: host}) do
+    String.ends_with?(host, ".")
   end
 
   defp uris_match?(%URI{} = uri_a, %URI{} = uri_b) do
@@ -89,11 +242,8 @@ defmodule SafeRedirect do
   end
 
   defp authority(%URI{host: host, port: port, scheme: scheme}) do
-    {downcase(host), port, downcase(scheme)}
+    {String.downcase(host), port, String.downcase(scheme)}
   end
-
-  defp downcase(nil), do: nil
-  defp downcase(string), do: String.downcase(string)
 
   defp valid_path?(path) when is_binary(path) do
     decoded = URI.decode(path)
@@ -131,7 +281,7 @@ defmodule SafeRedirect do
       iex> resolve_url(url, "/", allowed_redirect_uris: ["https://good.example"])
       "/"
   """
-  @spec resolve_url(any, String.t() | URI.t() | nil, keyword) :: any
+  @spec resolve_url(term(), uri_source() | nil, opts()) :: uri_source() | nil
   def resolve_url(url, default \\ "/", opts \\ [])
 
   def resolve_url(url, default, opts) when is_binary(url) do
@@ -167,14 +317,14 @@ defmodule SafeRedirect do
           allowed_redirect_uris: ["https://good.example"]
         )
     """
-    @spec redirect(Plug.Conn.t(), any, String.t() | URI.t(), keyword) ::
+    @spec redirect(Plug.Conn.t(), term(), uri_source(), opts()) ::
             Plug.Conn.t()
     if Code.ensure_loaded?(Phoenix.LiveView) do
       @spec redirect(
               Phoenix.LiveView.Socket.t(),
-              any,
-              String.t() | URI.t(),
-              keyword
+              term(),
+              uri_source(),
+              opts()
             ) ::
               Phoenix.LiveView.Socket.t()
     end

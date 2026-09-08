@@ -5,6 +5,23 @@ format. This project adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Added
+
+- Accept a single string or `URI` struct as `:allowed_redirect_uris`.
+- Add the `SafeRedirect.uri_source/0`, `SafeRedirect.allowed_redirect_uris/0`,
+  and `SafeRedirect.opts/0` types.
+
+### Changed
+
+- Raise `ArgumentError` if invalid options are passed as
+  `:allowed_redirect_uris`.
+- Raise `ArgumentError` if an unsupported option key is passed.
+- Raise `ArgumentError` if an allowed redirect URI has no scheme or host.
+- Raise `ArgumentError` if an allowed redirect URI has a path, query string,
+  fragment, or userinfo.
+- Raise `ArgumentError` if the host of an allowed redirect URI has a trailing
+  dot.
+
 ### Fixed
 
 - Accept percent-encoded paths. `/caf%C3%A9` and `/some%20path` were previously

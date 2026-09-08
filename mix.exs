@@ -19,6 +19,14 @@ defmodule SafeRedirect.MixProject do
       deps: deps(),
       test_coverage: [tool: ExCoveralls],
       dialyzer: [
+        flags: [
+          :error_handling,
+          :extra_return,
+          :missing_return,
+          :underspecs,
+          :unmatched_returns,
+          :unknown
+        ],
         # Configure ignore file. The file uses the short format:
         # mix dialyzer --format short
         ignore_warnings: ".dialyzer_ignore.exs",
