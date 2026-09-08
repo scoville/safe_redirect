@@ -8,6 +8,8 @@ format. This project adheres to [Semantic Versioning](https://semver.org/spec/v2
 ### Added
 
 - Accept a single string or `URI` struct as `:allowed_redirect_uris`.
+- Add the `SafeRedirect.uri_source/0`, `SafeRedirect.allowed_redirect_uris/0`,
+  and `SafeRedirect.opts/0` types.
 
 ### Changed
 

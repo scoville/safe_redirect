@@ -8,6 +8,24 @@ defmodule SafeRedirect do
   # another host. No control character belongs in a redirect target.
   @control_chars Enum.map(0..0x1F, &<<&1>>) ++ ["\x7F"]
 
+  @typedoc """
+  A URL, either as a string or as a `URI` struct.
+  """
+  @type uri_source :: String.t() | URI.t()
+
+  @typedoc """
+  The value of the `:allowed_redirect_uris` option.
+
+  See the module documentation for the accepted shapes.
+  """
+  @type allowed_redirect_uris ::
+          [uri_source()] | uri_source() | {module(), atom()}
+
+  @typedoc """
+  Options accepted by all functions.
+  """
+  @type opts :: [allowed_redirect_uris: allowed_redirect_uris()]
+
   @doc """
   Takes a URL as a string and determines whether it points to an allowed
   host.
@@ -28,7 +46,7 @@ defmodule SafeRedirect do
       iex> valid_url?(url, allowed_redirect_uris: ["https://good.example"])
       false
   """
-  @spec valid_url?(String.t() | URI.t() | nil, keyword) :: boolean
+  @spec valid_url?(uri_source() | nil, opts()) :: boolean
   def valid_url?(url, opts \\ [])
 
   def valid_url?(nil, _), do: false
@@ -263,7 +281,7 @@ defmodule SafeRedirect do
       iex> resolve_url(url, "/", allowed_redirect_uris: ["https://good.example"])
       "/"
   """
-  @spec resolve_url(any, String.t() | URI.t() | nil, keyword) :: any
+  @spec resolve_url(term(), uri_source() | nil, opts()) :: uri_source() | nil
   def resolve_url(url, default \\ "/", opts \\ [])
 
   def resolve_url(url, default, opts) when is_binary(url) do
@@ -299,14 +317,14 @@ defmodule SafeRedirect do
           allowed_redirect_uris: ["https://good.example"]
         )
     """
-    @spec redirect(Plug.Conn.t(), any, String.t() | URI.t(), keyword) ::
+    @spec redirect(Plug.Conn.t(), term(), uri_source(), opts()) ::
             Plug.Conn.t()
     if Code.ensure_loaded?(Phoenix.LiveView) do
       @spec redirect(
               Phoenix.LiveView.Socket.t(),
-              any,
-              String.t() | URI.t(),
-              keyword
+              term(),
+              uri_source(),
+              opts()
             ) ::
               Phoenix.LiveView.Socket.t()
     end
