@@ -137,7 +137,7 @@ defmodule SafeRedirect do
   end
 
   defp allowed_redirect_uris(uris) when is_list(uris) do
-    Enum.map(uris, &validate_allowed_redirect_uri/1)
+    Enum.flat_map(uris, &comparable_uri/1)
   end
 
   defp allowed_redirect_uris(uri) when is_binary(uri) or is_struct(uri, URI) do
@@ -196,21 +196,20 @@ defmodule SafeRedirect do
     end
   end
 
-  defp validate_allowed_redirect_uri(uri) when is_binary(uri) do
+  # An entry that cannot be parsed is dropped, since it can never match.
+  defp comparable_uri(uri) when is_binary(uri) do
     case URI.new(uri) do
-      {:ok, parsed} -> validate_comparable_uri!(parsed)
-      {:error, _} -> :ok
+      {:ok, parsed} -> comparable_uri(parsed)
+      {:error, _} -> []
     end
-
-    uri
   end
 
-  defp validate_allowed_redirect_uri(%URI{} = uri) do
+  defp comparable_uri(%URI{} = uri) do
     validate_comparable_uri!(uri)
-    uri
+    [uri]
   end
 
-  defp validate_allowed_redirect_uri(other) do
+  defp comparable_uri(other) do
     raise ArgumentError, """
     invalid entry in the :allowed_redirect_uris option
 
@@ -281,13 +280,6 @@ defmodule SafeRedirect do
 
   defp uris_match?(%URI{} = uri_a, %URI{} = uri_b) do
     authority(uri_a) == authority(uri_b)
-  end
-
-  defp uris_match?(url, %URI{} = uri_b) when is_binary(url) do
-    case URI.new(url) do
-      {:ok, uri_a} -> uris_match?(uri_a, uri_b)
-      {:error, _} -> false
-    end
   end
 
   defp authority(%URI{host: host, port: port, scheme: scheme}) do
