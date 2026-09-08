@@ -79,7 +79,6 @@ defmodule SafeRedirect.MixProject do
 
   defp package do
     [
-      organization: "scoville",
       licenses: ["Apache-2.0"],
       links: %{
         "GitHub" => @source_url,

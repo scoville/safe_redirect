@@ -40,9 +40,6 @@ jobs:
           key: ${{ runner.os }}-mix-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('mix.lock') }}
           restore-keys: ${{ runner.os }}-mix-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-
 
-      - name: Authenticate with Hex
-        run: mix hex.organization auth scoville --key ${{ secrets.HEX_ORGANIZATION_KEY }}
-
       - name: Install Dependencies
         run: mix deps.get
 

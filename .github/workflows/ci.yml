@@ -50,8 +50,6 @@ jobs:
             ${{ runner.os }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-plt-
           path: |
             .plts
-      - name: Authenticate with Hex
-        run: mix hex.organization auth scoville --key ${{ secrets.HEX_ORGANIZATION_KEY }}
       - name: Install Dependencies
         run: mix deps.get
       - name: Run Hex Audit
