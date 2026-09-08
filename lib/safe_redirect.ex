@@ -61,11 +61,11 @@ defmodule SafeRedirect do
   end
 
   defp get_allowed_redirect_uris(opts) do
+    default = Application.get_env(:safe_redirect, :allowed_redirect_uris, [])
+
     opts
-    |> Keyword.get(
-      :allowed_redirect_uris,
-      Application.get_env(:safe_redirect, :allowed_redirect_uris, [])
-    )
+    |> Keyword.validate!(allowed_redirect_uris: default)
+    |> Keyword.fetch!(:allowed_redirect_uris)
     |> allowed_redirect_uris()
   end
 

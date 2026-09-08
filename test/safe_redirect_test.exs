@@ -286,6 +286,30 @@ defmodule SafeRedirectTest do
         )
       end
     end
+
+    test "raises for an unsupported option key" do
+      error =
+        assert_raise ArgumentError, fn ->
+          SafeRedirect.valid_url?("https://good.example",
+            allowed_redirect_uri: ["https://good.example"]
+          )
+        end
+
+      assert Exception.message(error) =~ "unknown keys [:allowed_redirect_uri]"
+    end
+
+    test "raises for a duplicated option key" do
+      error =
+        assert_raise ArgumentError, fn ->
+          SafeRedirect.valid_url?("https://good.example",
+            allowed_redirect_uris: ["https://good.example"],
+            allowed_redirect_uris: []
+          )
+        end
+
+      assert Exception.message(error) =~
+               "duplicate keys [:allowed_redirect_uris]"
+    end
   end
 
   describe "resolve_url/1" do

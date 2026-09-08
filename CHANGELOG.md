@@ -13,6 +13,7 @@ format. This project adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 - Raise `ArgumentError` if invalid options are passed as
   `:allowed_redirect_uris`.
+- Raise `ArgumentError` if an unsupported option key is passed.
 
 ### Fixed
 
