@@ -21,6 +21,8 @@ format. This project adheres to [Semantic Versioning](https://semver.org/spec/v2
   fragment, or userinfo.
 - Raise `ArgumentError` if the host of an allowed redirect URI has a trailing
   dot.
+- Always set the response content type to `text/html` when redirecting a
+  `Plug.Conn`.
 
 ### Fixed
 
