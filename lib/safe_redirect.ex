@@ -121,10 +121,12 @@ defmodule SafeRedirect do
   def valid_url?(%URI{host: host}, _) when host in [nil, ""], do: false
 
   def valid_url?(%URI{path: path} = uri, opts) do
-    valid_path?(path) &&
-      opts
-      |> get_allowed_redirect_uris()
-      |> Enum.any?(&uris_match?(&1, uri))
+    valid_path?(path) && allowed?(uri, get_allowed_redirect_uris(opts))
+  end
+
+  defp allowed?(%URI{} = uri, allowed_uris) do
+    authority = authority(uri)
+    Enum.any?(allowed_uris, &(authority(&1) == authority))
   end
 
   defp get_allowed_redirect_uris(opts) do
@@ -276,10 +278,6 @@ defmodule SafeRedirect do
 
   defp trailing_dot_host?(%URI{host: host}) do
     String.ends_with?(host, ".")
-  end
-
-  defp uris_match?(%URI{} = uri_a, %URI{} = uri_b) do
-    authority(uri_a) == authority(uri_b)
   end
 
   defp authority(%URI{host: host, port: port, scheme: scheme}) do
