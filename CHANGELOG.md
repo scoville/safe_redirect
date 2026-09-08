@@ -12,6 +12,7 @@ format. This project adheres to [Semantic Versioning](https://semver.org/spec/v2
   could not be expressed.
 - Accept paths with a trailing slash (`/some/path/`) or repeated slashes
   (`/some//path`), which were previously rejected.
+- Compare the host case-insensitively, per RFC 3986.
 - `SafeRedirect.valid_url?/2` raised `FunctionClauseError` for `nil`. It now
   returns `false`, matching `SafeRedirect.resolve_url/3`.
 - `SafeRedirect.redirect/4` raised `UndefinedFunctionError` in applications that
