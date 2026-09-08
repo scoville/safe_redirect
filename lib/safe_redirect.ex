@@ -298,7 +298,7 @@ defmodule SafeRedirect do
     decoded = URI.decode(path)
 
     not control_char?(decoded) and
-      not protocol_relative?(path) and
+      not protocol_relative?(decoded) and
       decoded |> Path.split() |> Enum.all?(&(&1 not in [".", ".."]))
   end
 
@@ -311,10 +311,9 @@ defmodule SafeRedirect do
 
   # A browser strips tabs, newlines and carriage returns from a URL before
   # parsing it, which can turn a path into a protocol-relative URL pointing at
-  # another host.
+  # another host. Takes a decoded path.
   defp protocol_relative?(path) do
     path
-    |> URI.decode()
     |> strip_control_chars()
     |> String.replace("\\", "/")
     |> String.starts_with?("//")
@@ -425,7 +424,7 @@ defmodule SafeRedirect do
     defp redirect_target("http://" <> _ = url), do: {:external, url}
 
     defp redirect_target("/" <> _ = url) do
-      if protocol_relative?(url) do
+      if protocol_relative?(URI.decode(url)) do
         raise_unredirectable(url)
       else
         {:to, url}
