@@ -139,7 +139,7 @@ defmodule SafeRedirect do
   end
 
   defp allowed_redirect_uris(uris) when is_list(uris) do
-    Enum.flat_map(uris, &comparable_uri/1)
+    Enum.map(uris, &comparable_uri/1)
   end
 
   defp allowed_redirect_uris(uri) when is_binary(uri) or is_struct(uri, URI) do
@@ -198,17 +198,28 @@ defmodule SafeRedirect do
     end
   end
 
-  # An entry that cannot be parsed is dropped, since it can never match.
   defp comparable_uri(uri) when is_binary(uri) do
     case URI.new(uri) do
-      {:ok, parsed} -> comparable_uri(parsed)
-      {:error, _} -> []
+      {:ok, parsed} ->
+        comparable_uri(parsed)
+
+      {:error, part} ->
+        raise ArgumentError, """
+        allowed redirect URI that cannot be parsed
+
+        URI.new/1 refused this entry at #{inspect(part)}, so it can never
+        match.
+
+        Got:
+
+            #{inspect(uri)}
+        """
     end
   end
 
   defp comparable_uri(%URI{} = uri) do
     validate_comparable_uri!(uri)
-    [uri]
+    uri
   end
 
   defp comparable_uri(other) do
