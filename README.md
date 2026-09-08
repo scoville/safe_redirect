@@ -43,8 +43,8 @@ For more information, refer to https://cheatsheetseries.owasp.org/cheatsheets/Se
 The allowed redirect URIs can be passed as an option to all library functions,
 or you can configure them in the application environment.
 
-The option can either be a list of strings or `URI` structs, or it can be a
-`{module, function}` tuple that returns such a list.
+The option can either be a list of strings or `URI` structs, a single string or
+`URI` struct, or a `{module, function}` tuple that returns such a list.
 
 It is recommended to define the URIs as `URI` structs at compile time to avoid
 converting strings to structs each time a redirect URL is validated.
@@ -127,26 +127,37 @@ iex> SafeRedirect.resolve_url("https://evil.example", "/portal")
 "/portal"
 ```
 
-Finally, you can use `safe_redirect/4` to safely redirect to the given URL if
-it is valid or to a default URL if it is not. The function automatically sets
-the `to` or `external` option depending on whether the resolved URL is relative
-or absolute. It works both with LiveView sockets and `Plug.Conn` structs,
-provided that `Plug` and `Phoenix.LiveView` are among your application's
-dependencies.
+Finally, you can use `SafeRedirect.redirect/4` to safely redirect to the given
+URL if it is valid or to a default URL if it is not. It works with a `Plug.Conn`
+or a LiveView socket. `Plug` and `Phoenix.LiveView` are optional dependencies.
 
 ```elixir
-SafeRedirect.safe_redirect(conn, "https://good.example/login")
+SafeRedirect.redirect(conn, "https://good.example/login")
 
-SafeRedirect.safe_redirect(socket, "https://good.example/login")
+SafeRedirect.redirect(socket, "https://good.example/login")
 ```
+
+A root-relative path is an internal redirect and an absolute `http` or `https`
+URL an external one. For a LiveView socket these are passed to
+`Phoenix.LiveView.redirect/2` as `to:` and `external:`; for a `Plug.Conn` both
+set the `location` header.
+
+Given a `Plug.Conn`, the connection is halted.
 
 ## Validation Rules
 
-- Relative URIs are always considered allowed.
-- Paths must not contain dot segments (`.` or `..`).
-- Protocol-relative URIs (starting with `//`) are not allowed.
-- Given absolute URIs are compared against the configured allowed URIs by
-  matching the scheme, host, and port.
-- Any path under an allowed base URI is considered valid.
-- Paths, query strings, and fragments are ignored when checking the base URI.
-- Absolute redirect URIs are only valid if the scheme is `https` or `http`.
+- Relative paths starting with `/` are allowed without checking the allowed
+  URIs.
+- Absolute URLs are allowed if the scheme, host, and port match one of the
+  allowed URIs. The scheme and host are compared case-insensitively.
+- A trailing dot is part of the host, so `https://good.example.` does not
+  match an allowed `https://good.example`.
+- Protocol-relative URLs starting with `//` are not allowed.
+- A URL with a scheme but no host is not allowed. `mailto:`, `javascript:`,
+  and `data:` URLs are always refused.
+- Paths must not contain dot segments (`.` or `..`), literal or encoded.
+- Paths must not contain control characters, literal or encoded.
+- Percent-encoded characters are decoded before a path is checked, so
+  `/some%2Fpath` is treated as `/some/path`.
+- An allowed URI may not have a path, query string, fragment, or userinfo,
+  since only the scheme, host, and port are compared.
