@@ -15,6 +15,10 @@ def deps do
 end
 ```
 
+This package is tested against the Elixir and OTP versions that are still
+supported upstream. Older versions down to the requirement in `mix.exs` may
+still work, but they are not covered by CI and not officially supported.
+
 ## Open Redirect Vulnerability
 
 If a web application allows an external redirect URL to be set without
@@ -126,6 +130,10 @@ iex> SafeRedirect.resolve_url("https://evil.example")
 iex> SafeRedirect.resolve_url("https://evil.example", "/portal")
 "/portal"
 ```
+
+The default value is returned as given and is not validated against the allowed
+URIs, so it must not come from user input. This applies to
+`SafeRedirect.redirect/4` as well.
 
 Finally, you can use `SafeRedirect.redirect/4` to safely redirect to the given
 URL if it is valid or to a default URL if it is not. It works with a `Plug.Conn`

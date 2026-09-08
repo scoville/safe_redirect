@@ -355,10 +355,12 @@ defmodule SafeRedirectTest do
       assert SafeRedirect.resolve_url(url, "/", opts) == url
     end
 
-    test "ignores invalid allowed URLs" do
-      url = "https://good.example/login"
+    test "raises for an allowed URL that cannot be parsed" do
       opts = [allowed_redirect_uris: ["¥", "https://good.example"]]
-      assert SafeRedirect.resolve_url(url, "/", opts) == url
+
+      assert_raise ArgumentError, ~r/cannot be parsed/, fn ->
+        SafeRedirect.resolve_url("https://good.example/login", "/", opts)
+      end
     end
 
     test "returns default URL if URL is invalid" do
