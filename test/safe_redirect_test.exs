@@ -282,6 +282,30 @@ defmodule SafeRedirectTest do
       end
     end
 
+    test "raises for an entry with a path, query, fragment, or userinfo" do
+      for entry <- [
+            "https://good.example/tenant-a",
+            "https://good.example/?a=1",
+            "https://good.example/#section",
+            "https://user@good.example"
+          ] do
+        assert_raise ArgumentError, ~r/ignored parts/, fn ->
+          SafeRedirect.valid_url?("https://good.example/admin",
+            allowed_redirect_uris: [entry]
+          )
+        end
+      end
+    end
+
+    test "accepts an entry with no path or a root path" do
+      assert SafeRedirect.valid_url?("https://good.example",
+               allowed_redirect_uris: [
+                 "https://good.example",
+                 "https://a.example/"
+               ]
+             )
+    end
+
     test "raises for an unsupported option key" do
       error =
         assert_raise ArgumentError, fn ->

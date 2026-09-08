@@ -15,6 +15,8 @@ format. This project adheres to [Semantic Versioning](https://semver.org/spec/v2
   `:allowed_redirect_uris`.
 - Raise `ArgumentError` if an unsupported option key is passed.
 - Raise `ArgumentError` if an allowed redirect URI has no scheme or host.
+- Raise `ArgumentError` if an allowed redirect URI has a path, query string,
+  fragment, or userinfo.
 
 ### Fixed
 

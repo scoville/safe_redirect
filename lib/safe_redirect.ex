@@ -169,7 +169,30 @@ defmodule SafeRedirect do
     """
   end
 
-  defp validate_comparable_uri!(%URI{}), do: :ok
+  defp validate_comparable_uri!(%URI{} = uri) do
+    if ignored_uri_parts?(uri) do
+      raise ArgumentError, """
+      allowed redirect URI with ignored parts
+
+      Only the scheme, host, and port of an allowed URI are compared. Path,
+      query, fragment, and userinfo are ignored. Make sure the allowed URIs
+      only define the origin.
+
+      Got:
+
+          #{inspect(URI.to_string(uri))}
+      """
+    end
+
+    :ok
+  end
+
+  defp ignored_uri_parts?(%URI{} = uri) do
+    %URI{path: path, query: query, fragment: fragment, userinfo: userinfo} = uri
+
+    path not in [nil, "/"] or not is_nil(query) or not is_nil(fragment) or
+      not is_nil(userinfo)
+  end
 
   defp uris_match?(%URI{} = uri_a, %URI{} = uri_b) do
     authority(uri_a) == authority(uri_b)
