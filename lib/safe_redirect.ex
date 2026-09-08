@@ -29,6 +29,11 @@ defmodule SafeRedirect do
       config :safe_redirect,
         allowed_redirect_uris: {MyAppWeb.RedirectURIs, :allowed_redirect_uris}
 
+  The application environment is a global default for the common case of one
+  allowlist per system, and the option overrides it wherever a call needs
+  something else. It is read on every call rather than at compile time, so it
+  can be set in `runtime.exs`.
+
   ## Validation rules
 
   - Relative paths starting with `/` are allowed without checking the allowed
@@ -329,8 +334,10 @@ defmodule SafeRedirect do
   otherwise.
 
   The URL is returned unchanged, so passing a `URI` struct returns a `URI`
-  struct. Any other value, including `nil`, returns the default value. The
-  default value is returned as given and is not validated.
+  struct. Any other value, including `nil`, returns the default value.
+
+  The default value is returned as given and is not validated against the
+  allowed URIs, so it must not come from user input.
 
   See the module documentation for the validation rules and the
   `:allowed_redirect_uris` option.
@@ -379,9 +386,13 @@ defmodule SafeRedirect do
 
     Given a `Plug.Conn`, the connection is halted.
 
+    The default value is not validated against the allowed URIs, so it must not
+    come from user input.
+
     Raises `ArgumentError` if the resolved URL is neither a relative path nor
     an `http` or `https` URL, for example if the default value is `nil` or if
-    an allowed URI uses a different scheme.
+    an allowed URI uses a different scheme. That is the only check applied to
+    the default value.
 
     ## Examples
 
